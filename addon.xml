@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="plugin.video.telekomsport" name="Telekom Sport" version="1.0.0~beta" provider-name="hubsif">
+    <requires>
+        <import addon="xbmc.python" version="2.5.0"/>
+    </requires>
+    <extension point="xbmc.python.pluginsource" library="default.py">
+        <provides>video</provides>
+    </extension>
+    <extension point="xbmc.addon.metadata">
+        <platform>all</platform>
+        <license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
+        <summary lang="de">Telekom Sport</summary>
+        <summary lang="en">Telekom Sports</summary>
+        <description lang="de">Erlebe die große Welt des Sports. Fußball, Eishockey, Basketball und mehr live und auf Abruf. Alle Wettbewerbe in bester HD-Qualität.</description>
+        <description lang="en">Experience the big world of sports. Soccer, Ice Hockey, Basketball and more live and on demand. All competitions in best HD quality.</description>
+        <assets>
+            <icon>icon.png</icon>
+            <fanart>fanart.jpg</fanart>
+        </assets>
+        <news>
+            v1.0.0~beta (2017-07-26)
+            - initial release
+        </news>
+    </extension>
+</addon>
