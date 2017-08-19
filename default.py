@@ -1,3 +1,4 @@
+# coding=utf-8
 # Copyright (C) 2017 hubsif (hubsif@gmx.de)
 #
 # This program is free software; you can redistribute it and/or modify it under the terms 
@@ -94,6 +95,12 @@ if mode is None:
                 icon = '3.liga'
             elif 'Frauen-Bundesliga' in child['title']:
                 icon = 'frauen-bundesliga'
+            elif u'Fußball-Bundesliga' in child['title']:
+                icon = 'bundesliga'
+            elif 'UEFA Champions League' in child['title']:
+                icon = 'uefa'
+            elif 'Handball-Bundesliga' in child['title']:
+                icon = 'hbl'
             li = xbmcgui.ListItem(content['title'] + ' - ' + child['title'])
             li.setArt({'poster': _icons_path + icon + '.png', 'fanart': _fanart_path + icon + '.jpg'})
             xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
@@ -107,8 +114,11 @@ elif mode == 'page':
     for content in jsonResult['data']['content']:
         for group_element in content['group_elements']:
             if group_element['type'] == 'eventLane':
+                title = content['title'] if not group_element['title'] else content['title'] + ' - ' + group_element['title']
+                if not content['title'].strip():
+                    title = __language__(30003)
                 url = build_url({'mode': group_element['type'], group_element['type']: group_element['data_url']})
-                li = xbmcgui.ListItem(content['title'] if not group_element['title'] else content['title'] + ' - ' + group_element['title'])
+                li = xbmcgui.ListItem(title)
                 li.setArt({'fanart': jsonResult['data']['metadata']['web']['image']})
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
                             
@@ -122,15 +132,21 @@ elif mode == 'eventLane':
         if event['target_type'] == 'event':
             url = build_url({'mode': 'event', 'event': event['target']})
             if event['metadata']['title']:
-                title = event['title']
+                title = event['metadata']['title']
             else:
                 if event['type'] == 'teamEvent' and 'details' in event['metadata'] and 'home' in event['metadata']['details']:
                     title = event['metadata']['details']['home']['name_full'] + ' - ' + event['metadata']['details']['away']['name_full']
             eventinfo = event['metadata']['description_bold'] + ' - ' + event['metadata']['description_regular']
-            li = xbmcgui.ListItem('[B]' + eventinfo +  '[/B][CR]' + title, iconImage='https://www.telekomsport.de' + event['metadata']['images']['editorial'])
+            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')', iconImage='https://www.telekomsport.de' + event['metadata']['images']['editorial'])
             li.setInfo('video', {'plot': prettydate(datetime.utcfromtimestamp(int(event['metadata']['scheduled_start']['utc_timestamp'])))})
             li.setProperty('fanart_image', 'https://www.telekomsport.de' + event['metadata']['images']['editorial'])
-            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+            
+            if event['metadata']['state'] == 'live':
+                print "SETTING TO LIVE"
+                li.setProperty('IsPlayable', 'true')
+                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+            else:
+                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
     xbmcplugin.endOfDirectory(_addon_handler)
         
@@ -138,26 +154,28 @@ elif mode == 'eventLane':
 elif mode == 'event':
     response = urllib.urlopen("https://www.telekomsport.de/api/v1" + args['event']).read()
     jsonResult = json.loads(response)
-    
+
     if jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'noVideo':
         scheduled_start = datetime.utcfromtimestamp(int(jsonResult['data']['content'][0]['group_elements'][0]['data']['metadata']['scheduled_start']['utc_timestamp']))
-        if jsonResult['data']['content'][0]['group_elements'][0]['data']['metadata']['state'] == 'pre' and scheduled_start > datetime.now():
+        if jsonResult['data']['content'][0]['group_elements'][0]['data']['metadata']['state'] == 'pre' and scheduled_start > datetime.utcnow():
             xbmcgui.Dialog().ok(_addon_name, __language__(30001), "", prettydate(scheduled_start))
         else:
             xbmcgui.Dialog().ok(_addon_name, __language__(30002))
         xbmcplugin.endOfDirectory(_addon_handler, succeeded=False)
-    else:
-        for content in jsonResult['data']['content']:
-            if content['group_elements'][0]['type'] == 'eventVideos':
-                for eventVideo in content['group_elements'][0]['data']:
-                    isLivestream = 'isLivestream' in eventVideo and event['isLivestream'] == 'true'
-                    url = build_url({'mode': 'video', 'videoid': eventVideo['videoID'], 'isLivestream': isLivestream})
-                    li = xbmcgui.ListItem(eventVideo['title'], iconImage='https://www.telekomsport.de' + eventVideo['images']['editorial'])
-                    li.setProperty('fanart_image', 'https://www.telekomsport.de' + eventVideo['images']['editorial'])
-                    li.setProperty('IsPlayable', 'true')
-                    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
-
+    elif len(jsonResult['data']['content']) > 2 and jsonResult['data']['content'][2]['group_elements'][0]['type'] == 'eventVideos':
+        for eventVideo in jsonResult['data']['content'][2]['group_elements'][0]['data']:
+            isLivestream = 'isLivestream' in eventVideo and event['isLivestream'] == 'true'
+            url = build_url({'mode': 'video', 'videoid': eventVideo['videoID'], 'isLivestream': isLivestream})
+            li = xbmcgui.ListItem(eventVideo['title'], iconImage='https://www.telekomsport.de' + eventVideo['images']['editorial'])
+            li.setProperty('fanart_image', 'https://www.telekomsport.de' + eventVideo['images']['editorial'])
+            li.setProperty('IsPlayable', 'true')
+            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
         xbmcplugin.endOfDirectory(_addon_handler)
+    elif jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'player':
+        isLivestream = 'islivestream' in jsonResult['data']['content'][0]['group_elements'][0]['data'][0] and jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['islivestream']
+        url = build_url({'mode': 'video', 'videoid': jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['videoID'], 'isLivestream': isLivestream})
+        listitem = xbmcgui.ListItem(path=url)
+        xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
 
 elif mode == 'video':
     videoid = args['videoid']
@@ -165,13 +183,16 @@ elif mode == 'video':
     unassecret = 'aXHi21able'
     timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
     ident = str(randint(10000000, 99999999)) + str(int(time.time()))
-    streamtype = 'live' if args['isLivestream'] == 'true' else 'vod'
+    streamtype = 'live' if args['isLivestream'] == 'True' else 'vod'
 
     auth = md5.new(videoid + partnerid + timestamp + unassecret).hexdigest()
 
     url = 'https://streamaccess.unas.tv/hdflash2/' + streamtype + '/' + partnerid + '/' + videoid + '.xml?format=iphone&streamid=' + videoid + '&partnerid=' + partnerid + '&ident=' + ident + '&timestamp=' + timestamp + '&auth=' + auth
 
     response = urllib.urlopen(url).read()
+    
+    print url
+    print response
     
     xmlroot = ET.ElementTree(ET.fromstring(response))
     playlisturl = xmlroot.find('token').get('url')

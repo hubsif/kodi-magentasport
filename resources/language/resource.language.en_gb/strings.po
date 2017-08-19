@@ -16,3 +16,7 @@ msgstr ""
 msgctxt "#30002"
 msgid "Error loading video or no video available."
 msgstr ""
+
+msgctxt "#30003"
+msgid "Missing title"
+msgstr ""
