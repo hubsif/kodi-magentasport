@@ -38,98 +38,129 @@ _fanart_path   = _addon_path + "/resources/fanart/"
  
 xbmcplugin.setContent(_addon_handler, 'movies')
 
-dtformat = '%Y-%m-%d %H:%M:%S'
-
 ###########
 # functions
 ###########
 
+# helper functions
+
 def build_url(query):
     return _addon_url + '?' + urllib.urlencode(query)
 
-def convertdatetime(dt, sourceformat):
-    try:
-        return datetime.strptime(dt, sourceformat)
-    except TypeError:
-        return datetime(*(time.strptime(dt, sourceformat)[0:6]))
-
 def prettydate(dt, addtime=True):    
+    dt = dt + utc_offset()
     if addtime:
         return dt.strftime(xbmc.getRegion("datelong") + ", " + xbmc.getRegion("time").replace(":%S", "").replace("%H%H", "%H"))
     else:
         return dt.strftime(xbmc.getRegion("datelong"))
 
-##############
-# main routine
-##############
+def utc_offset():
+    ts = time.time()
+    return (datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
 
-# urllib ssl fix
-import ssl
-from functools import wraps
-def sslwrap(func):
-    @wraps(func)
-    def bar(*args, **kw):
-        kw['ssl_version'] = ssl.PROTOCOL_TLSv1
-        return func(*args, **kw)
-    return bar
-ssl.wrap_socket = sslwrap(ssl.wrap_socket)
 
-# get arguments
-args = dict(urlparse.parse_qsl(sys.argv[2][1:]))
-mode = args.get('mode', None)
+# plugin call modes    
 
-if mode is None:
+def getMain():
     response = urllib.urlopen("https://www.telekomsport.de/api/v1/navigation").read()
     jsonResult = json.loads(response)
     
-    for content in jsonResult['data']['filter']:
-        for child in content['children']:
-            url = build_url({'mode': child['target_type'], child['target_type']: child['target']})
-            if 'BBL' in child['title']:
-                icon = 'bbl'
-            elif 'Euroleague' in child['title']:
-                icon = 'euroleague'
-            elif 'DEL' in child['title']:
-                icon = 'del'
-            elif '3. Liga' in child['title']:
-                icon = '3.liga'
-            elif 'Frauen-Bundesliga' in child['title']:
-                icon = 'frauen-bundesliga'
-            elif u'Fußball-Bundesliga' in child['title']:
-                icon = 'bundesliga'
-            elif 'UEFA Champions League' in child['title']:
-                icon = 'uefa'
-            elif 'Handball-Bundesliga' in child['title']:
-                icon = 'hbl'
-            li = xbmcgui.ListItem(content['title'] + ' - ' + child['title'])
-            li.setArt({'poster': _icons_path + icon + '.png', 'fanart': _fanart_path + icon + '.jpg'})
-            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
-        
-    xbmcplugin.endOfDirectory(_addon_handler)
+    # get currently running games
+    response = urllib.urlopen("https://www.telekomsport.de/api/v1" + jsonResult['data']['main']['target']).read()
+    jsonLive = json.loads(response)
+    for content in jsonLive['data']['content']:
+        if content['title'] == 'Live':
+            for group_element in content['group_elements']:
+                if group_element['type'] == "eventLane":
+                    liveevent = False
+                    for data in group_element['data']:
+                        if data['metadata']['state'] == 'live':
+                            liveevent = True
+                    if liveevent:
+                        url = build_url({'mode': group_element['type'], group_element['type']: group_element['data_url'], 'onlylive': True})
+                        li = xbmcgui.ListItem('[B]' + __language__(30004) + '[/B]')
+                        li.setArt({'fanart': jsonLive['data']['metadata']['web']['image']})
+                        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
     
-elif mode == 'page':
+    # get sports categories
+    def addMainDirectoryItem(content, title):
+        url = build_url({'mode': content['target_type'], content['target_type']: content['target']})
+        icon = "bla"
+        if 'BBL' in content['title']:
+            icon = 'bbl'
+        elif 'Euroleague' in content['title']:
+            icon = 'euroleague'
+        elif 'EuroBasket' in content['title']:
+            icon = 'eurobasket'
+        elif 'DEL' in content['title']:
+            icon = 'del'
+        elif '3. Liga' in content['title']:
+            icon = '3.liga'
+        elif 'Frauen-Bundesliga' in content['title']:
+            icon = 'frauen-bundesliga'
+        elif 'Bayern.tv' in content['title']:
+            icon = 'fcbtv'
+        elif u'Fußball-Bundesliga' in content['title']:
+            icon = 'bundesliga'
+        elif 'UEFA Champions League' in content['title']:
+            icon = 'uefa'
+        elif 'Handball-Bundesliga' in content['title']:
+            icon = 'hbl'
+        li = xbmcgui.ListItem(title)
+        li.setArt({'poster': _icons_path + icon + '.png', 'fanart': _fanart_path + icon + '.jpg'})
+        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+                    
+    for content in jsonResult['data']['filter']:
+        if content['children']:
+            for child in content['children']:
+                addMainDirectoryItem(child, content['title'] + ' - ' + child['title'])
+        else:
+            addMainDirectoryItem(content, content['title'])
+
+    xbmcplugin.endOfDirectory(_addon_handler)
+
+
+def getpage():
     response = urllib.urlopen("https://www.telekomsport.de/api/v1" + args['page']).read()
     jsonResult = json.loads(response)
+
+    count = 0
+    for content in jsonResult['data']['content']:
+        for group_element in content['group_elements']:
+            if group_element['type'] == 'eventLane':
+                count += 1
 
     for content in jsonResult['data']['content']:
         for group_element in content['group_elements']:
             if group_element['type'] == 'eventLane':
-                title = content['title'] if not group_element['title'] else content['title'] + ' - ' + group_element['title']
-                if not content['title'].strip():
-                    title = __language__(30003)
-                url = build_url({'mode': group_element['type'], group_element['type']: group_element['data_url']})
-                li = xbmcgui.ListItem(title)
-                li.setArt({'fanart': jsonResult['data']['metadata']['web']['image']})
-                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+                if count <= 1:
+                    args['eventLane'] = group_element['data_url']
+                    geteventLane()
+                else:
+                    title = content['title'] if not group_element['title'] else content['title'] + ' - ' + group_element['title']
+                    if not content['title'].strip():
+                        title = __language__(30003)
+                    url = build_url({'mode': group_element['type'], group_element['type']: group_element['data_url']})
+                    li = xbmcgui.ListItem(title)
+                    li.setArt({'fanart': jsonResult['data']['metadata']['web']['image']})
+                    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
                             
     xbmcplugin.endOfDirectory(_addon_handler)
 
-elif mode == 'eventLane':
+def geteventLane():
     response = urllib.urlopen("https://www.telekomsport.de/api/v1" + args['eventLane']).read()
     jsonResult = json.loads(response)
 
+    eventday = None;
     for event in jsonResult['data']['data']:
         if event['target_type'] == 'event':
+            scheduled_start = datetime.utcfromtimestamp(int(event['metadata']['scheduled_start']['utc_timestamp']))
+            if eventday is None or (event['metadata']['state'] == "post" and scheduled_start.date() < eventday) or (event['metadata']['state'] != "post" and scheduled_start.date() > eventday):
+                li = xbmcgui.ListItem("[COLOR yellow]" + prettydate(scheduled_start, False) + "[/COLOR]")
+                li.setProperty("IsPlayable", "false")
+                xbmcplugin.addDirectoryItem(handle=_addon_handler, url="", listitem=li)
+                eventday = scheduled_start.date()
+
             url = build_url({'mode': 'event', 'event': event['target']})
             if event['metadata']['title']:
                 title = event['metadata']['title']
@@ -138,20 +169,18 @@ elif mode == 'eventLane':
                     title = event['metadata']['details']['home']['name_full'] + ' - ' + event['metadata']['details']['away']['name_full']
             eventinfo = event['metadata']['description_bold'] + ' - ' + event['metadata']['description_regular']
             li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')', iconImage='https://www.telekomsport.de' + event['metadata']['images']['editorial'])
-            li.setInfo('video', {'plot': prettydate(datetime.utcfromtimestamp(int(event['metadata']['scheduled_start']['utc_timestamp'])))})
+            li.setInfo('video', {'plot': prettydate(scheduled_start)})
             li.setProperty('fanart_image', 'https://www.telekomsport.de' + event['metadata']['images']['editorial'])
             
             if event['metadata']['state'] == 'live':
-                print "SETTING TO LIVE"
                 li.setProperty('IsPlayable', 'true')
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
-            else:
+            elif not ('onlylive' in args and args['onlylive']):
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
     xbmcplugin.endOfDirectory(_addon_handler)
-        
 
-elif mode == 'event':
+def getevent():
     response = urllib.urlopen("https://www.telekomsport.de/api/v1" + args['event']).read()
     jsonResult = json.loads(response)
 
@@ -177,7 +206,7 @@ elif mode == 'event':
         listitem = xbmcgui.ListItem(path=url)
         xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
 
-elif mode == 'video':
+def getvideo():
     videoid = args['videoid']
     partnerid = '2780'
     unassecret = 'aXHi21able'
@@ -200,3 +229,28 @@ elif mode == 'video':
     
     listitem = xbmcgui.ListItem(path=playlisturl + "?hdnea=" + auth)
     xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
+        
+
+##############
+# main routine
+##############
+
+# urllib ssl fix
+import ssl
+from functools import wraps
+def sslwrap(func):
+    @wraps(func)
+    def bar(*args, **kw):
+        kw['ssl_version'] = ssl.PROTOCOL_TLSv1
+        return func(*args, **kw)
+    return bar
+ssl.wrap_socket = sslwrap(ssl.wrap_socket)
+
+# get arguments
+args = dict(urlparse.parse_qsl(sys.argv[2][1:]))
+mode = args.get('mode', None)
+    
+if mode is None:
+    mode = "Main"
+    
+locals()['get' + mode]()

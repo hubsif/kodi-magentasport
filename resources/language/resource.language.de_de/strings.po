@@ -20,3 +20,7 @@ msgstr "Fehler beim Laden des Videos oder kein Video verfügbar."
 msgctxt "#30003"
 msgid "Missing title"
 msgstr "ohne Namen"
+
+msgctxt "#30004"
+msgid "CURRENTLY RUNNING"
+msgstr "JETZT LIVE"
