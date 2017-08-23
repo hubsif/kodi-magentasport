@@ -38,6 +38,9 @@ _fanart_path   = _addon_path + "/resources/fanart/"
  
 xbmcplugin.setContent(_addon_handler, 'movies')
 
+base_url = "https://www.telekomsport.de/api/v1"
+main_page = "/navigation"
+
 ###########
 # functions
 ###########
@@ -62,11 +65,11 @@ def utc_offset():
 # plugin call modes    
 
 def getMain():
-    response = urllib.urlopen("https://www.telekomsport.de/api/v1/navigation").read()
+    response = urllib.urlopen(base_url + main_page).read()
     jsonResult = json.loads(response)
     
     # get currently running games
-    response = urllib.urlopen("https://www.telekomsport.de/api/v1" + jsonResult['data']['main']['target']).read()
+    response = urllib.urlopen(base_url + jsonResult['data']['main']['target']).read()
     jsonLive = json.loads(response)
     for content in jsonLive['data']['content']:
         if content['title'] == 'Live':
@@ -121,7 +124,7 @@ def getMain():
 
 
 def getpage():
-    response = urllib.urlopen("https://www.telekomsport.de/api/v1" + args['page']).read()
+    response = urllib.urlopen(base_url + args['page']).read()
     jsonResult = json.loads(response)
 
     count = 0
@@ -148,25 +151,29 @@ def getpage():
     xbmcplugin.endOfDirectory(_addon_handler)
 
 def geteventLane():
-    response = urllib.urlopen("https://www.telekomsport.de/api/v1" + args['eventLane']).read()
+    response = urllib.urlopen(base_url + args['eventLane']).read()
     jsonResult = json.loads(response)
 
     eventday = None;
     for event in jsonResult['data']['data']:
         if event['target_type'] == 'event':
             scheduled_start = datetime.utcfromtimestamp(int(event['metadata']['scheduled_start']['utc_timestamp']))
-            if eventday is None or (event['metadata']['state'] == "post" and scheduled_start.date() < eventday) or (event['metadata']['state'] != "post" and scheduled_start.date() > eventday):
+            if (eventday is None or (event['metadata']['state'] == "post" and scheduled_start.date() < eventday) or (event['metadata']['state'] != "post" and scheduled_start.date() > eventday)
+                and not (event['metadata']['state'] != 'live' and ('onlylive' in args and args['onlylive']))):
                 li = xbmcgui.ListItem("[COLOR yellow]" + prettydate(scheduled_start, False) + "[/COLOR]")
                 li.setProperty("IsPlayable", "false")
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url="", listitem=li)
                 eventday = scheduled_start.date()
 
             url = build_url({'mode': 'event', 'event': event['target']})
+            title = __language__(30003)
             if event['metadata']['title']:
                 title = event['metadata']['title']
             else:
                 if event['type'] == 'teamEvent' and 'details' in event['metadata'] and 'home' in event['metadata']['details']:
                     title = event['metadata']['details']['home']['name_full'] + ' - ' + event['metadata']['details']['away']['name_full']
+                elif event['metadata']['description_bold']:
+                    title = event['metadata']['description_bold']
             eventinfo = event['metadata']['description_bold'] + ' - ' + event['metadata']['description_regular']
             li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')', iconImage='https://www.telekomsport.de' + event['metadata']['images']['editorial'])
             li.setInfo('video', {'plot': prettydate(scheduled_start)})
@@ -181,7 +188,7 @@ def geteventLane():
     xbmcplugin.endOfDirectory(_addon_handler)
 
 def getevent():
-    response = urllib.urlopen("https://www.telekomsport.de/api/v1" + args['event']).read()
+    response = urllib.urlopen(base_url + args['event']).read()
     jsonResult = json.loads(response)
 
     if jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'noVideo':
