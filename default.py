@@ -170,7 +170,7 @@ def geteventLane():
             if event['metadata']['title']:
                 title = event['metadata']['title']
             else:
-                if event['type'] == 'teamEvent' and 'details' in event['metadata'] and 'home' in event['metadata']['details']:
+                if event['type'] in ['teamEvent', 'skyTeamEvent'] and 'details' in event['metadata'] and 'home' in event['metadata']['details']:
                     title = event['metadata']['details']['home']['name_full'] + ' - ' + event['metadata']['details']['away']['name_full']
                 elif event['metadata']['description_bold']:
                     title = event['metadata']['description_bold']
