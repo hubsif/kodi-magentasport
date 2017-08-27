@@ -198,20 +198,26 @@ def getevent():
         else:
             xbmcgui.Dialog().ok(_addon_name, __language__(30002))
         xbmcplugin.endOfDirectory(_addon_handler, succeeded=False)
-    elif len(jsonResult['data']['content']) > 2 and jsonResult['data']['content'][2]['group_elements'][0]['type'] == 'eventVideos':
-        for eventVideo in jsonResult['data']['content'][2]['group_elements'][0]['data']:
-            isLivestream = 'isLivestream' in eventVideo and event['isLivestream'] == 'true'
-            url = build_url({'mode': 'video', 'videoid': eventVideo['videoID'], 'isLivestream': isLivestream})
-            li = xbmcgui.ListItem(eventVideo['title'], iconImage='https://www.telekomsport.de' + eventVideo['images']['editorial'])
-            li.setProperty('fanart_image', 'https://www.telekomsport.de' + eventVideo['images']['editorial'])
-            li.setProperty('IsPlayable', 'true')
-            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
-        xbmcplugin.endOfDirectory(_addon_handler)
-    elif jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'player':
-        isLivestream = 'islivestream' in jsonResult['data']['content'][0]['group_elements'][0]['data'][0] and jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['islivestream']
-        url = build_url({'mode': 'video', 'videoid': jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['videoID'], 'isLivestream': isLivestream})
-        listitem = xbmcgui.ListItem(path=url)
-        xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
+    else:
+        hasEventVideos = False
+        for content in jsonResult['data']['content']:
+            for group_element in content['group_elements']:
+                if group_element['type'] == 'eventVideos':
+                    for eventVideo in group_element['data']:
+                        isLivestream = 'isLivestream' in eventVideo and event['isLivestream'] == 'true'
+                        url = build_url({'mode': 'video', 'videoid': eventVideo['videoID'], 'isLivestream': isLivestream})
+                        li = xbmcgui.ListItem(eventVideo['title'], iconImage='https://www.telekomsport.de' + eventVideo['images']['editorial'])
+                        li.setProperty('fanart_image', 'https://www.telekomsport.de' + eventVideo['images']['editorial'])
+                        li.setProperty('IsPlayable', 'true')
+                        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+                        hasEventVideos = True
+        if not hasEventVideos and jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'player':
+            isLivestream = 'islivestream' in jsonResult['data']['content'][0]['group_elements'][0]['data'][0] and jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['islivestream']
+            url = build_url({'mode': 'video', 'videoid': jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['videoID'], 'isLivestream': isLivestream})
+            listitem = xbmcgui.ListItem(path=url)
+            xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
+        else:
+            xbmcplugin.endOfDirectory(_addon_handler)
 
 def getvideo():
     videoid = args['videoid']
