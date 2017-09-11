@@ -1,15 +1,15 @@
 # coding=utf-8
 # Copyright (C) 2017 hubsif (hubsif@gmx.de)
 #
-# This program is free software; you can redistribute it and/or modify it under the terms 
-# of the GNU General Public License as published by the Free Software Foundation; 
+# This program is free software; you can redistribute it and/or modify it under the terms
+# of the GNU General Public License as published by the Free Software Foundation;
 # either version 2 of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along with this program; 
+# You should have received a copy of the GNU General Public License along with this program;
 # if not, see <http://www.gnu.org/licenses/>.
 
 ##############
@@ -20,6 +20,7 @@ import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import os, sys, re, json, string, random, time
 import xml.etree.ElementTree as ET
 import urllib
+import urllib2
 import urlparse
 import time
 import md5
@@ -35,10 +36,13 @@ _addon_path    = xbmc.translatePath(_addon.getAddonInfo("path") )
 __language__   = _addon.getLocalizedString
 _icons_path    = _addon_path + "/resources/icons/"
 _fanart_path   = _addon_path + "/resources/fanart/"
- 
+
 xbmcplugin.setContent(_addon_handler, 'movies')
 
 base_url = "https://www.telekomsport.de/api/v1"
+oauth_url = "https://accounts.login.idm.telekom.com/oauth2/tokens"
+jwt_url = "https://www.telekomsport.de/service/auth/app/login/jwt"
+heartbeat_url = "https://www.telekomsport.de/service/heartbeat"
 main_page = "/navigation"
 
 ###########
@@ -50,7 +54,7 @@ main_page = "/navigation"
 def build_url(query):
     return _addon_url + '?' + urllib.urlencode(query)
 
-def prettydate(dt, addtime=True):    
+def prettydate(dt, addtime=True):
     dt = dt + utc_offset()
     if addtime:
         return dt.strftime(xbmc.getRegion("datelong") + ", " + xbmc.getRegion("time").replace(":%S", "").replace("%H%H", "%H"))
@@ -61,13 +65,42 @@ def utc_offset():
     ts = time.time()
     return (datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
 
+def get_jwt(username, password):
+    data = { "claims": "{'id_token':{'urn:telekom.com:all':null}}", "client_id": "10LIVESAM30000004901TSMAPP00000000000000", "grant_type": "password", "scope": "tsm offline_access", "username": username, "password": password }
+    response = urllib.urlopen(oauth_url + '?' + urllib.urlencode(data), "").read()
+    jsonResult = json.loads(response)
 
-# plugin call modes    
+    if 'access_token' in jsonResult:
+        response = urllib2.urlopen(urllib2.Request(jwt_url, json.dumps({"token": jsonResult['access_token']}), {'Content-Type': 'application/json'})).read()
+        jsonResult = json.loads(response)
+        if 'status' in jsonResult and jsonResult['status'] == "success" and 'data' in jsonResult and 'token' in jsonResult['data']:
+            return jsonResult['data']['token']
+
+def auth_media(jwt, videoid):
+    try:
+        response = urllib2.urlopen(urllib2.Request(heartbeat_url + '/initialize', json.dumps({"media": videoid}), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+    except urllib2.HTTPError, error:
+        response = error.read()
+
+    try:
+        urllib2.urlopen(urllib2.Request(heartbeat_url + '/destroy', "", {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+    except urllib2.HTTPError, e:
+        pass
+
+    jsonResult = json.loads(response)
+    if 'status' in jsonResult and jsonResult['status'] == "success":
+        return "success"
+    elif 'status' in jsonResult and jsonResult['status'] == "error":
+        if 'message' in jsonResult:
+            return jsonResult['message']
+    return __language__(30006)
+
+# plugin call modes
 
 def getMain():
     response = urllib.urlopen(base_url + main_page).read()
     jsonResult = json.loads(response)
-    
+
     # get currently running games
     response = urllib.urlopen(base_url + jsonResult['data']['main']['target']).read()
     jsonLive = json.loads(response)
@@ -84,7 +117,7 @@ def getMain():
                         li = xbmcgui.ListItem('[B]' + __language__(30004) + '[/B]')
                         li.setArt({'fanart': jsonLive['data']['metadata']['web']['image']})
                         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
-    
+
     # get sports categories
     def addMainDirectoryItem(content, title):
         url = build_url({'mode': content['target_type'], content['target_type']: content['target']})
@@ -112,7 +145,7 @@ def getMain():
         li = xbmcgui.ListItem(title)
         li.setArt({'poster': _icons_path + icon + '.png', 'fanart': _fanart_path + icon + '.jpg'})
         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
-                    
+
     for content in jsonResult['data']['filter']:
         if content['children']:
             for child in content['children']:
@@ -147,7 +180,7 @@ def getpage():
                     li = xbmcgui.ListItem(title)
                     li.setArt({'fanart': jsonResult['data']['metadata']['web']['image']})
                     xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
-                            
+
     xbmcplugin.endOfDirectory(_addon_handler)
 
 def geteventLane():
@@ -178,7 +211,7 @@ def geteventLane():
             li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')', iconImage='https://www.telekomsport.de' + event['metadata']['images']['editorial'])
             li.setInfo('video', {'plot': prettydate(scheduled_start)})
             li.setProperty('fanart_image', 'https://www.telekomsport.de' + event['metadata']['images']['editorial'])
-            
+
             if event['metadata']['state'] == 'live':
                 li.setProperty('IsPlayable', 'true')
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
@@ -204,8 +237,9 @@ def getevent():
             for group_element in content['group_elements']:
                 if group_element['type'] == 'eventVideos':
                     for eventVideo in group_element['data']:
-                        isLivestream = 'isLivestream' in eventVideo and event['isLivestream'] == 'true'
-                        url = build_url({'mode': 'video', 'videoid': eventVideo['videoID'], 'isLivestream': isLivestream})
+                        isLivestream = 'isLivestream' in eventVideo and eventVideo['isLivestream']
+                        isPay = 'pay' in eventVideo and eventVideo['pay']
+                        url = build_url({'mode': 'video', 'videoid': eventVideo['videoID'], 'isLivestream': isLivestream, 'isPay': isPay})
                         li = xbmcgui.ListItem(eventVideo['title'], iconImage='https://www.telekomsport.de' + eventVideo['images']['editorial'])
                         li.setProperty('fanart_image', 'https://www.telekomsport.de' + eventVideo['images']['editorial'])
                         li.setProperty('IsPlayable', 'true')
@@ -213,7 +247,8 @@ def getevent():
                         hasEventVideos = True
         if not hasEventVideos and jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'player':
             isLivestream = 'islivestream' in jsonResult['data']['content'][0]['group_elements'][0]['data'][0] and jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['islivestream']
-            url = build_url({'mode': 'video', 'videoid': jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['videoID'], 'isLivestream': isLivestream})
+            isPay = 'pay' in jsonResult['data']['content'][0]['group_elements'][0]['data'][0] and jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['pay']
+            url = build_url({'mode': 'video', 'videoid': jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['videoID'], 'isLivestream': isLivestream, 'isPay': isPay})
             listitem = xbmcgui.ListItem(path=url)
             xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
         else:
@@ -221,6 +256,23 @@ def getevent():
 
 def getvideo():
     videoid = args['videoid']
+
+    if args['isPay'] == 'True':
+        if not _addon.getSetting('username'):
+            xbmcgui.Dialog().ok(_addon_name, __language__(30007))
+            _addon.openSettings()
+            return
+        else:
+            jwt = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'))
+            if jwt:
+                auth_response = auth_media(jwt, videoid)
+                if auth_response != "success":
+                    xbmcgui.Dialog().ok(_addon_name, auth_response)
+                    return
+            else:
+                xbmcgui.Dialog().ok(_addon_name, __language__(30005))
+                return
+
     partnerid = '2780'
     unassecret = 'aXHi21able'
     timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
@@ -232,17 +284,14 @@ def getvideo():
     url = 'https://streamaccess.unas.tv/hdflash2/' + streamtype + '/' + partnerid + '/' + videoid + '.xml?format=iphone&streamid=' + videoid + '&partnerid=' + partnerid + '&ident=' + ident + '&timestamp=' + timestamp + '&auth=' + auth
 
     response = urllib.urlopen(url).read()
-    
-    print url
-    print response
-    
+
     xmlroot = ET.ElementTree(ET.fromstring(response))
     playlisturl = xmlroot.find('token').get('url')
     auth = xmlroot.find('token').get('auth')
-    
+
     listitem = xbmcgui.ListItem(path=playlisturl + "?hdnea=" + auth)
     xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
-        
+
 
 ##############
 # main routine
@@ -262,8 +311,8 @@ ssl.wrap_socket = sslwrap(ssl.wrap_socket)
 # get arguments
 args = dict(urlparse.parse_qsl(sys.argv[2][1:]))
 mode = args.get('mode', None)
-    
+
 if mode is None:
     mode = "Main"
-    
+
 locals()['get' + mode]()

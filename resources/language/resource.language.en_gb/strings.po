@@ -24,3 +24,27 @@ msgstr ""
 msgctxt "#30004"
 msgid "CURRENTLY RUNNING"
 msgstr ""
+
+msgctxt "#30005"
+msgid "Error authenticating. Please check username and password."
+msgstr ""
+
+msgctxt "#30006"
+msgid "Error verifying subscription."
+msgstr ""
+
+msgctxt "#30007"
+msgid "Login data missing. Please define username and password first."
+msgstr ""
+
+msgctxt "#30008"
+msgid "General"
+msgstr ""
+
+msgctxt "#30009"
+msgid "Username"
+msgstr ""
+
+msgctxt "#30010"
+msgid "Password"
+msgstr ""

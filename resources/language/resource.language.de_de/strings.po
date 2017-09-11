@@ -24,3 +24,27 @@ msgstr "ohne Namen"
 msgctxt "#30004"
 msgid "CURRENTLY RUNNING"
 msgstr "JETZT LIVE"
+
+msgctxt "#30005"
+msgid "Error authenticating. Please check username and password."
+msgstr "Fehler bei der Authentifizierung. Bitte überprüfe Benutzername und Passwort."
+
+msgctxt "#30006"
+msgid "Error verifying subscription."
+msgstr "Fehler bei der Überprüfung des Abonnements."
+
+msgctxt "#30007"
+msgid "Login data missing. Please define username and password first."
+msgstr "Login Daten fehlen. Bitte erst Benutzername und Passwort festlegen."
+
+msgctxt "#30008"
+msgid "General"
+msgstr "Allgemein"
+
+msgctxt "#30009"
+msgid "Username"
+msgstr "Benutzername"
+
+msgctxt "#30010"
+msgid "Password"
+msgstr "Passwort"
