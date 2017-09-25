@@ -173,8 +173,12 @@ def getpage():
                     args['eventLane'] = group_element['data_url']
                     geteventLane()
                 else:
-                    title = content['title'] if not group_element['title'] else content['title'] + ' - ' + group_element['title']
-                    if not content['title'].strip():
+                    if content['title'] and group_element['title']:
+                        li = xbmcgui.ListItem("[COLOR gold]" + content['title'].upper() + "[/COLOR]")
+                        li.setProperty("IsPlayable", "false")
+                        xbmcplugin.addDirectoryItem(handle=_addon_handler, url="", listitem=li)
+                    title = group_element['title'] if group_element['title'] else "[B]" + content['title'].upper() + "[/B]"
+                    if not title.strip():
                         title = __language__(30003)
                     url = build_url({'mode': group_element['type'], group_element['type']: group_element['data_url']})
                     li = xbmcgui.ListItem(title)
@@ -193,7 +197,7 @@ def geteventLane():
             scheduled_start = datetime.utcfromtimestamp(int(event['metadata']['scheduled_start']['utc_timestamp']))
             if (eventday is None or (event['metadata']['state'] == "post" and scheduled_start.date() < eventday) or (event['metadata']['state'] != "post" and scheduled_start.date() > eventday)
                 and not (event['metadata']['state'] != 'live' and ('onlylive' in args and args['onlylive']))):
-                li = xbmcgui.ListItem("[COLOR yellow]" + prettydate(scheduled_start, False) + "[/COLOR]")
+                li = xbmcgui.ListItem("[COLOR gold]" + prettydate(scheduled_start, False) + "[/COLOR]")
                 li.setProperty("IsPlayable", "false")
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url="", listitem=li)
                 eventday = scheduled_start.date()
