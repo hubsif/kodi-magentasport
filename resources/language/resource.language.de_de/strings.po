@@ -26,8 +26,8 @@ msgid "CURRENTLY RUNNING"
 msgstr "JETZT LIVE"
 
 msgctxt "#30005"
-msgid "Error authenticating. Please check username and password."
-msgstr "Fehler bei der Authentifizierung. Bitte überprüfe Benutzername und Passwort."
+msgid "To watch this video you need a subscription and login credentials. The current credentials produced an authentication error. Please check username and password in addon settings."
+msgstr "Für dieses Video muss ein Abo abgeschlossen und entsprechende Login-Daten hinterlegt werden. Mit den aktuellen Login-Daten gab es einen Fehler bei der Authentifizierung. Bitte überprüfe Benutzername und Passwort in den Addon-Einstellungen."
 
 msgctxt "#30006"
 msgid "Error verifying subscription."

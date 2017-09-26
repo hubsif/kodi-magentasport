@@ -26,7 +26,7 @@ msgid "CURRENTLY RUNNING"
 msgstr ""
 
 msgctxt "#30005"
-msgid "Error authenticating. Please check username and password."
+msgid "To watch this video you need a subscription and login credentials. The current credentials produced an authentication error. Please check username and password in addon settings."
 msgstr ""
 
 msgctxt "#30006"

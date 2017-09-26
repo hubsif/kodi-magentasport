@@ -43,6 +43,7 @@ base_url = "https://www.telekomsport.de/api/v1"
 oauth_url = "https://accounts.login.idm.telekom.com/oauth2/tokens"
 jwt_url = "https://www.telekomsport.de/service/auth/app/login/jwt"
 heartbeat_url = "https://www.telekomsport.de/service/heartbeat"
+stream_url = "https://www.telekomsport.de/service/player/streamAccess"
 main_page = "/navigation"
 
 ###########
@@ -267,6 +268,7 @@ def getevent():
 def getvideo():
     videoid = args['videoid']
 
+    jwt = None
     if args['isPay'] == 'True':
         if not _addon.getSetting('username'):
             xbmcgui.Dialog().ok(_addon_name, __language__(30007))
@@ -283,15 +285,11 @@ def getvideo():
                 xbmcgui.Dialog().ok(_addon_name, __language__(30005))
                 return
 
-    partnerid = '2780'
-    unassecret = 'aXHi21able'
-    timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
-    ident = str(randint(10000000, 99999999)) + str(int(time.time()))
-    streamtype = 'live' if args['isLivestream'] == 'True' else 'vod'
+    jwt = jwt or 'empty'
 
-    auth = md5.new(videoid + partnerid + timestamp + unassecret).hexdigest()
-
-    url = 'https://streamaccess.unas.tv/hdflash2/' + streamtype + '/' + partnerid + '/' + videoid + '.xml?format=iphone&streamid=' + videoid + '&partnerid=' + partnerid + '&ident=' + ident + '&timestamp=' + timestamp + '&auth=' + auth
+    response = urllib2.urlopen(urllib2.Request(stream_url, json.dumps({ 'videoId': videoid}), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+    jsonResult = json.loads(response)
+    url = 'https:' + jsonResult['data']['stream-access'][0]
 
     response = urllib.urlopen(url).read()
 
