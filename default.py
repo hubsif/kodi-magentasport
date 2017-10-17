@@ -217,8 +217,7 @@ def geteventLane():
             li.setInfo('video', {'plot': prettydate(scheduled_start)})
             li.setProperty('fanart_image', 'https://www.telekomsport.de' + event['metadata']['images']['editorial'])
 
-            # assuming editorialLane always only has one video
-            if event['metadata']['state'] == 'live' or jsonResult['data']['type'] == 'editorialLane':
+            if event['metadata']['state'] == 'live':
                 li.setProperty('IsPlayable', 'true')
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
             elif not ('onlylive' in args and args['onlylive']):
@@ -249,8 +248,8 @@ def getevent():
             isLivestream = 'islivestream' in jsonResult['data']['content'][0]['group_elements'][0]['data'][0] and jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['islivestream']
             isPay = 'pay' in jsonResult['data']['content'][0]['group_elements'][0]['data'][0] and jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['pay']
             url = build_url({'mode': 'video', 'videoid': jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['videoID'], 'isLivestream': isLivestream, 'isPay': isPay})
-            listitem = xbmcgui.ListItem(path=url)
-            xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
+            xbmc.Player().play(url)
+            xbmcplugin.endOfDirectory(_addon_handler, succeeded=False)
         else:
             for content in jsonResult['data']['content']:
                 for group_element in content['group_elements']:
