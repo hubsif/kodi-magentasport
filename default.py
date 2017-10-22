@@ -261,6 +261,7 @@ def getevent():
                             li = xbmcgui.ListItem(eventVideo['title'], iconImage='https://www.telekomsport.de' + eventVideo['images']['editorial'])
                             li.setProperty('fanart_image', 'https://www.telekomsport.de' + eventVideo['images']['editorial'])
                             li.setProperty('IsPlayable', 'true')
+                            li.setInfo('video', {})
                             xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
             xbmcplugin.endOfDirectory(_addon_handler)
 
