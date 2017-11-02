@@ -13,7 +13,8 @@
         <summary lang="en">Telekom Sports</summary>
         <description lang="de">Erlebe die große Welt des Sports. Fußball, Eishockey, Basketball und mehr live und auf Abruf. Alle Wettbewerbe in bester HD-Qualität.</description>
         <description lang="en">Experience the big world of sports. Soccer, Ice Hockey, Basketball and more live and on demand. All competitions in best HD quality.</description>
-        <assets>
+        <description lang="he">לחוות את העולם הגדול של הספורט. כדורגל, הוקי קרח, כדורסל ועוד לצפות לפי דרישה. כל התחרויות באיכות HD הטובה ביותר.</description>
+       <assets>
             <icon>icon.png</icon>
             <fanart>fanart.jpg</fanart>
         </assets>
