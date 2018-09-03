@@ -68,7 +68,7 @@ def utc_offset():
 
 def get_jwt(username, password):
     data = { "claims": "{'id_token':{'urn:telekom.com:all':null}}", "client_id": "10LIVESAM30000004901TSMAPP00000000000000", "grant_type": "password", "scope": "tsm offline_access", "username": username, "password": password }
-    response = urllib.urlopen(oauth_url + '?' + urllib.urlencode(data), "").read()
+    response = urllib2.urlopen(urllib2.Request(oauth_url, urllib.urlencode(data), {'Content-Type': 'application/json'})).read()
     jsonResult = json.loads(response)
 
     if 'access_token' in jsonResult:
@@ -219,6 +219,7 @@ def geteventLane():
 
             if event['metadata']['state'] == 'live':
                 li.setProperty('IsPlayable', 'true')
+                li.setInfo('video', {})
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
             elif not ('onlylive' in args and args['onlylive']):
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
@@ -261,6 +262,7 @@ def getevent():
                             li = xbmcgui.ListItem(eventVideo['title'], iconImage='https://www.telekomsport.de' + eventVideo['images']['editorial'])
                             li.setProperty('fanart_image', 'https://www.telekomsport.de' + eventVideo['images']['editorial'])
                             li.setProperty('IsPlayable', 'true')
+                            li.setInfo('video', {})
                             xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
             xbmcplugin.endOfDirectory(_addon_handler)
 
@@ -297,6 +299,8 @@ def getvideo():
     auth = xmlroot.find('token').get('auth')
 
     listitem = xbmcgui.ListItem(path=playlisturl + "?hdnea=" + auth)
+    listitem.setProperty('inputstreamaddon', 'inputstream.adaptive')
+    listitem.setProperty('inputstream.adaptive.manifest_type', 'hls')
     xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
 
 

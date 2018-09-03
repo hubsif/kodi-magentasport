@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.telekomsport" name="Telekom Sport" version="1.2.1" provider-name="hubsif">
+<addon id="plugin.video.telekomsport" name="Telekom Sport" version="1.2.2" provider-name="hubsif">
     <requires>
         <import addon="xbmc.python" version="2.5.0"/>
     </requires>
@@ -19,6 +19,10 @@
             <fanart>fanart.jpg</fanart>
         </assets>
         <news>
+            v1.2.2 (2018-08-27)
+            - fix playback issue with Kodi Leia (thanks to egolus)
+            - use inputstream for Kodi Leia (thanks to MRLB)
+            - submit content-type for auth
             v1.2.1 (2017-10-17)
             - fix some content not playing (editorialLanes with multiple videos)
             v1.2.0 (2017-09-26)
