@@ -125,11 +125,11 @@ def getMain():
         icon = "bla"
         if 'BBL' in content['title']:
             icon = 'bbl'
-        elif 'Euroleague' in content['title']:
+        elif 'EuroLeague' in content['title']:
             icon = 'euroleague'
         elif 'EuroBasket' in content['title']:
             icon = 'eurobasket'
-        elif 'DEL' in content['title']:
+        elif 'Deutsche Eishockey Liga' in content['title']:
             icon = 'del'
         elif '3. Liga' in content['title']:
             icon = '3.liga'
