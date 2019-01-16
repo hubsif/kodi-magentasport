@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.telekomsport" name="Telekom Sport" version="1.2.2" provider-name="hubsif">
+<addon id="plugin.video.magentasport" name="Magenta Sport" version="2.0.0" provider-name="hubsif">
     <requires>
         <import addon="xbmc.python" version="2.5.0"/>
     </requires>
@@ -9,16 +9,22 @@
     <extension point="xbmc.addon.metadata">
         <platform>all</platform>
         <license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
-        <summary lang="de">Telekom Sport</summary>
-        <summary lang="en">Telekom Sports</summary>
-        <description lang="de">Erlebe die große Welt des Sports. Fußball, Eishockey, Basketball und mehr live und auf Abruf. Alle Wettbewerbe in bester HD-Qualität.</description>
-        <description lang="en">Experience the big world of sports. Soccer, Ice Hockey, Basketball and more live and on demand. All competitions in best HD quality.</description>
-        <description lang="he">לחוות את העולם הגדול של הספורט. כדורגל, הוקי קרח, כדורסל ועוד לצפות לפי דרישה. כל התחרויות באיכות HD הטובה ביותר.</description>
+        <summary lang="de">Magenta Sport</summary>
+        <summary lang="en">Magenta Sport</summary>
+        <description lang="de">Bei MagentaSport mit Sky Sport Kompakt sehen Sie die Original Sky Konferenzen der Fußball-Bundesliga und der UEFA Champions League sowie alle Spiele der DKB Handball-Bundesliga. Dazu alle Spiele der 3. Liga, der Deutschen Eishockey Liga, der easyCredit Basketball Bundesliga und vieles mehr.</description>
+        <description lang="en">At MagentaSport with Sky Sport Kompakt you can watch the original Sky Conferences of the German Bundesliga and the UEFA Champions League as well as all matches of the DKB Handball Bundesliga. Also all games of the 3rd league, the German Ice Hockey League, the easyCredit Basketball Bundesliga and much more.</description>
        <assets>
-            <icon>icon.png</icon>
-            <fanart>fanart.jpg</fanart>
+            <icon>resources/icon.png</icon>
+            <fanart>resources/fanart.jpg</fanart>
         </assets>
         <news>
+            v2.0.0 (2019-01-16)
+            - update and rename to Magentasport
+            - use online sports category images
+            - fix crash issue with live stream shortcut in Leia
+            - remove single event category shortcut, fixes playback issue
+            - show error dialog on authentication failure
+            - some minor code cleanup
             v1.2.2 (2018-08-27)
             - fix playback issue with Kodi Leia (thanks to egolus)
             - use inputstream for Kodi Leia (thanks to MRLB)
