@@ -48,3 +48,7 @@ msgstr "Benutzername"
 msgctxt "#30010"
 msgid "Password"
 msgstr "Passwort"
+
+msgctxt "#30011"
+msgid "Error response from server:"
+msgstr "Fehlermeldung vom Server:"

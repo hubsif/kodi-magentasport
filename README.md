@@ -1,10 +1,11 @@
-Kodi Telekom Sport Addon
-========================
+Kodi Magenta Sport Addon (ehem. Telekom Sport)
+==============================================
 
 Über
 ----
 
-Mit diesem Addon kann man die Sportstreams von [Telekom Sport][1] ansehen.
+Mit diesem Addon kann man die Sportstreams von [Magenta Sport][1] (ehem.
+Telekom Sport) ansehen.
 
 Installation
 ------------
@@ -16,7 +17,8 @@ installieren.
 About
 -----
 
-This addon let's you watch the sports streams from [Telekom Sport][1].
+This addon let's you watch the sports streams from [Magenta Sport][1]
+(formerly Telekom Sport).
 
 Installation
 ------------
@@ -24,5 +26,5 @@ Installation
 Download the addon zipfile from the [releases page][2] and install it in
 Kodi -> Addons.
 
-[1]: https://www.telekomsport.de
+[1]: https://www.magentasport.de
 [2]: https://github.com/hubsif/kodi-telekomsport/releases

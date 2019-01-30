@@ -27,23 +27,24 @@ import md5
 from datetime import datetime
 from random import randint
 
-_addon_id      = 'plugin.video.telekomsport'
+_addon_id      = 'plugin.video.magentasport'
 _addon         = xbmcaddon.Addon(id=_addon_id)
 _addon_name    = _addon.getAddonInfo('name')
 _addon_handler = int(sys.argv[1])
 _addon_url     = sys.argv[0]
 _addon_path    = xbmc.translatePath(_addon.getAddonInfo("path") )
 __language__   = _addon.getLocalizedString
-_icons_path    = _addon_path + "/resources/icons/"
-_fanart_path   = _addon_path + "/resources/fanart/"
+#_icons_path    = _addon_path + "/resources/icons/"
+#_fanart_path   = _addon_path + "/resources/fanart/"
 
-xbmcplugin.setContent(_addon_handler, 'movies')
+xbmcplugin.setContent(_addon_handler, 'episodes')
 
-base_url = "https://www.telekomsport.de/api/v1"
+base_url = "https://www.magentasport.de/api/v2"
+base_image_url = "https://www.magentasport.de"
 oauth_url = "https://accounts.login.idm.telekom.com/oauth2/tokens"
-jwt_url = "https://www.telekomsport.de/service/auth/app/login/jwt"
-heartbeat_url = "https://www.telekomsport.de/service/heartbeat"
-stream_url = "https://www.telekomsport.de/service/player/streamAccess"
+jwt_url = "https://www.magentasport.de/service/auth/app/login/jwt"
+heartbeat_url = "https://www.magentasport.de/service/heartbeat"
+stream_url = "https://www.magentasport.de/service/player/streamAccess"
 main_page = "/navigation"
 
 ###########
@@ -119,40 +120,11 @@ def getMain():
                         li.setArt({'fanart': jsonLive['data']['metadata']['web']['image']})
                         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
-    # get sports categories
-    def addMainDirectoryItem(content, title):
+    for content in jsonResult['data']['league_filter']:
         url = build_url({'mode': content['target_type'], content['target_type']: content['target']})
-        icon = "bla"
-        if 'BBL' in content['title']:
-            icon = 'bbl'
-        elif 'EuroLeague' in content['title']:
-            icon = 'euroleague'
-        elif 'EuroBasket' in content['title']:
-            icon = 'eurobasket'
-        elif 'Deutsche Eishockey Liga' in content['title']:
-            icon = 'del'
-        elif '3. Liga' in content['title']:
-            icon = '3.liga'
-        elif 'Frauen-Bundesliga' in content['title']:
-            icon = 'frauen-bundesliga'
-        elif 'Bayern.tv' in content['title']:
-            icon = 'fcbtv'
-        elif u'Fußball-Bundesliga' in content['title']:
-            icon = 'bundesliga'
-        elif 'UEFA Champions League' in content['title']:
-            icon = 'uefa'
-        elif 'Handball-Bundesliga' in content['title']:
-            icon = 'hbl'
-        li = xbmcgui.ListItem(title)
-        li.setArt({'poster': _icons_path + icon + '.png', 'fanart': _fanart_path + icon + '.jpg'})
+        li = xbmcgui.ListItem(content['title'])
+        li.setArt({'icon': base_image_url + content['logo'], 'fanart': base_image_url + content['logo']})
         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
-
-    for content in jsonResult['data']['filter']:
-        if content['children']:
-            for child in content['children']:
-                addMainDirectoryItem(child, content['title'] + ' - ' + child['title'])
-        else:
-            addMainDirectoryItem(content, content['title'])
 
     xbmcplugin.endOfDirectory(_addon_handler)
 
@@ -203,7 +175,6 @@ def geteventLane():
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url="", listitem=li)
                 eventday = scheduled_start.date()
 
-            url = build_url({'mode': 'event', 'event': event['target']})
             title = __language__(30003)
             if event['metadata']['title']:
                 title = event['metadata']['title']
@@ -213,15 +184,17 @@ def geteventLane():
                 elif event['metadata']['description_bold']:
                     title = event['metadata']['description_bold']
             eventinfo = event['metadata']['description_bold'] + ' - ' + event['metadata']['description_regular']
-            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')', iconImage='https://www.telekomsport.de' + event['metadata']['images']['editorial'])
+            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')', iconImage=base_image_url + event['metadata']['images']['editorial'])
             li.setInfo('video', {'plot': prettydate(scheduled_start)})
-            li.setProperty('fanart_image', 'https://www.telekomsport.de' + event['metadata']['images']['editorial'])
+            li.setProperty('fanart_image', base_image_url + event['metadata']['images']['editorial'])
 
             if event['metadata']['state'] == 'live':
                 li.setProperty('IsPlayable', 'true')
                 li.setInfo('video', {})
+                url = build_url({'mode': 'event', 'event': event['target'], 'live': True})
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
             elif not ('onlylive' in args and args['onlylive']):
+                url = build_url({'mode': 'event', 'event': event['target']})
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
     xbmcplugin.endOfDirectory(_addon_handler)
@@ -237,34 +210,25 @@ def getevent():
         else:
             xbmcgui.Dialog().ok(_addon_name, __language__(30002))
         xbmcplugin.endOfDirectory(_addon_handler, succeeded=False)
+    elif 'live' in args and args['live']:
+        if jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'player':
+            eventVideo = jsonResult['data']['content'][0]['group_elements'][0]['data'][0]
+            global args
+            args = {'videoid': eventVideo['videoID'], 'isPay': 'True' if ('pay' in eventVideo and eventVideo['pay']) else 'False'}
+            getvideo()
     else:
-        hasEventVideos = 0
-        for content in jsonResult['data']['content']:
+        for index, content in enumerate(jsonResult['data']['content']):
             for group_element in content['group_elements']:
                 if group_element['type'] == 'eventVideos':
                     for eventVideo in group_element['data']:
-                        hasEventVideos += 1
-
-        if jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'player' and (not hasEventVideos or (hasEventVideos == 1 and jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['videoID'] == jsonResult['data']['content'][1]['group_elements'][0]['data'][0]['videoID'])):
-            isLivestream = 'islivestream' in jsonResult['data']['content'][0]['group_elements'][0]['data'][0] and jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['islivestream']
-            isPay = 'pay' in jsonResult['data']['content'][0]['group_elements'][0]['data'][0] and jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['pay']
-            url = build_url({'mode': 'video', 'videoid': jsonResult['data']['content'][0]['group_elements'][0]['data'][0]['videoID'], 'isLivestream': isLivestream, 'isPay': isPay})
-            xbmc.Player().play(url)
-            xbmcplugin.endOfDirectory(_addon_handler, succeeded=False)
-        else:
-            for content in jsonResult['data']['content']:
-                for group_element in content['group_elements']:
-                    if group_element['type'] == 'eventVideos':
-                        for eventVideo in group_element['data']:
-                            isLivestream = 'isLivestream' in eventVideo and eventVideo['isLivestream']
-                            isPay = 'pay' in eventVideo and eventVideo['pay']
-                            url = build_url({'mode': 'video', 'videoid': eventVideo['videoID'], 'isLivestream': isLivestream, 'isPay': isPay})
-                            li = xbmcgui.ListItem(eventVideo['title'], iconImage='https://www.telekomsport.de' + eventVideo['images']['editorial'])
-                            li.setProperty('fanart_image', 'https://www.telekomsport.de' + eventVideo['images']['editorial'])
-                            li.setProperty('IsPlayable', 'true')
-                            li.setInfo('video', {})
-                            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
-            xbmcplugin.endOfDirectory(_addon_handler)
+                        isPay = 'pay' in eventVideo and eventVideo['pay']
+                        url = build_url({'mode': 'video', 'videoid': eventVideo['videoID'], 'isPay': isPay})
+                        li = xbmcgui.ListItem(eventVideo['title'], iconImage=base_image_url + eventVideo['images']['editorial'])
+                        li.setProperty('fanart_image', base_image_url + eventVideo['images']['editorial'])
+                        li.setProperty('IsPlayable', 'true')
+                        li.setInfo('video', {})
+                        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+        xbmcplugin.endOfDirectory(_addon_handler)
 
 def getvideo():
     videoid = args['videoid']
@@ -276,14 +240,27 @@ def getvideo():
             _addon.openSettings()
             return
         else:
-            jwt = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'))
+            try:
+                jwt = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'))
+            except urllib2.HTTPError, e:
+                response = json.loads(e.read())
+                msg = __language__(30005)
+                if 'error_description' in response:
+                    msg += '\n\n'
+                    msg += __language__(30011)
+                    msg += '\n"' + response['error_description'] + '"'
+                xbmcgui.Dialog().ok(_addon_name, msg)
+                xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
+                return
             if jwt:
                 auth_response = auth_media(jwt, videoid)
                 if auth_response != "success":
                     xbmcgui.Dialog().ok(_addon_name, auth_response)
+                    xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
                     return
             else:
                 xbmcgui.Dialog().ok(_addon_name, __language__(30005))
+                xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
                 return
 
     jwt = jwt or 'empty'
