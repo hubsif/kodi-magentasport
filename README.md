@@ -13,6 +13,8 @@ Installation
 Das zipfile von der [Releases Seite][2] downloaden und in Kodi unter Addons
 installieren.
 
+Bei Problemen gerne ein Github-Issue aufmachen oder eine E-Mail an
+hubsif@gmx.de.
 
 About
 -----
@@ -27,4 +29,4 @@ Download the addon zipfile from the [releases page][2] and install it in
 Kodi -> Addons.
 
 [1]: https://www.magentasport.de
-[2]: https://github.com/hubsif/kodi-telekomsport/releases
+[2]: https://github.com/hubsif/kodi-magentasport/releases
