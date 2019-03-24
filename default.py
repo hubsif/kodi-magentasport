@@ -27,7 +27,10 @@ import md5
 from datetime import datetime
 from random import randint
 
-_addon_id      = 'plugin.video.magentasport'
+reload(sys)
+sys.setdefaultencoding('utf8')
+
+_addon_id      = 'plugin.video.telekomsport'
 _addon         = xbmcaddon.Addon(id=_addon_id)
 _addon_name    = _addon.getAddonInfo('name')
 _addon_handler = int(sys.argv[1])
@@ -106,19 +109,51 @@ def getMain():
     # get currently running games
     response = urllib.urlopen(base_url + jsonResult['data']['main']['target']).read()
     jsonLive = json.loads(response)
+    counterLive = 0
+    liveevent = False
+    ausgabeCounterLive1 = 'tbd'
     for content in jsonLive['data']['content']:
         if content['title'] == 'Live':
             for group_element in content['group_elements']:
                 if group_element['type'] == "eventLane":
-                    liveevent = False
                     for data in group_element['data']:
                         if data['metadata']['state'] == 'live':
                             liveevent = True
-                    if liveevent:
-                        url = build_url({'mode': group_element['type'], group_element['type']: group_element['data_url'], 'onlylive': True})
-                        li = xbmcgui.ListItem('[B]' + __language__(30004) + '[/B]')
-                        li.setArt({'fanart': jsonLive['data']['metadata']['web']['image']})
-                        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+                            counterLive = counterLive + 1
+                            ausgabeCounterLive1 = data['metadata']['name']+" ("+data['metadata']['description_bold'] + ' - ' + data['metadata']['description_regular']+')'
+
+
+    if liveevent:
+        url = build_url({'mode': group_element['type'], group_element['type']: group_element['data_url'], 'onlylive': True})
+        ueberschrift = ''
+        if counterLive == 1:
+            ueberschrift = '[B]' + __language__(30004) + ': [/B]'+ausgabeCounterLive1
+        else:
+            ueberschrift = '[B]' + __language__(30004) + ': [/B]'+str(counterLive)+' Events'
+        li = xbmcgui.ListItem(ueberschrift)
+        li.setArt({'fanart': jsonLive['data']['metadata']['web']['image']})
+        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+
+    erstesEvent = False
+    for content in jsonLive['data']['content']:
+        if content['title'] == 'FC Bayern.tv live':
+            for group_element in content['group_elements']:
+                if group_element['type'] == "eventLane":
+                    liveevent = False
+                    for data in group_element['data']:
+                        ausgabe = data['metadata']['name']
+
+                        #.decode('ascii', 'ignore')
+                        #if data['metadata']['name'][:5] == 'LIVE:':
+                         #   liveevent = True
+
+                        if erstesEvent == False:
+                            url = build_url({'mode': group_element['type'], group_element['type']: group_element['data_url']})
+                            li = xbmcgui.ListItem('[B]FC Bayern.tv live:[/B] '+ausgabe+ ' [B](24/7-Programm)[/B]')
+                            li.setArt({'fanart': jsonLive['data']['metadata']['web']['image']})
+                            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+                            erstesEvent = True
+
 
     for content in jsonResult['data']['league_filter']:
         url = build_url({'mode': content['target_type'], content['target_type']: content['target']})
@@ -162,6 +197,7 @@ def getpage():
 
 def geteventLane():
     response = urllib.urlopen(base_url + args['eventLane']).read()
+
     jsonResult = json.loads(response)
 
     eventday = None;
@@ -176,6 +212,7 @@ def geteventLane():
                 eventday = scheduled_start.date()
 
             title = __language__(30003)
+           
             if event['metadata']['title']:
                 title = event['metadata']['title']
             else:
@@ -183,12 +220,14 @@ def geteventLane():
                     title = event['metadata']['details']['home']['name_full'] + ' - ' + event['metadata']['details']['away']['name_full']
                 elif event['metadata']['description_bold']:
                     title = event['metadata']['description_bold']
+
             eventinfo = event['metadata']['description_bold'] + ' - ' + event['metadata']['description_regular']
             li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')', iconImage=base_image_url + event['metadata']['images']['editorial'])
             li.setInfo('video', {'plot': prettydate(scheduled_start)})
             li.setProperty('fanart_image', base_image_url + event['metadata']['images']['editorial'])
 
             if event['metadata']['state'] == 'live':
+                print ('adasgasdga')
                 li.setProperty('IsPlayable', 'true')
                 li.setInfo('video', {})
                 url = build_url({'mode': 'event', 'event': event['target'], 'live': True})
