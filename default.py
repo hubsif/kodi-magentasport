@@ -206,7 +206,7 @@ def getschedule():
                         eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata']['description_regular']
 
                         if events['metadata']['state'] == 'live':
-                            title = '[B]' + __language__(30004) + ': [/B]' + events['metadata']['name']
+                            title = __language__(30004) + ': ' + events['metadata']['name']
                         else:
                             title = str(prettytime(scheduled_start))+" Uhr: "+events['metadata']['name']
                         li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')

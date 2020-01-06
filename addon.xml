@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.telekomsport" name="Magenta Sport" version="2.0.0.6" provider-name="hubsif">
+<addon id="plugin.video.telekomsport" name="Magenta Sport" version="2.0.0.7" provider-name="hubsif">
     <requires>
         <import addon="xbmc.python" version="2.5.0"/>
     </requires>
@@ -18,6 +18,8 @@
             <fanart>resources/fanart.jpg</fanart>
         </assets>
         <news>
+			v2.0.6 (2020-01-06)
+			- removed error at schedule
 			v2.0.6 (2020-01-06)
 			- added schedule
             v2.0.0 (2019-01-16)
