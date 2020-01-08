@@ -238,6 +238,7 @@ def getpage():
                         li = xbmcgui.ListItem("[COLOR gold]" + content['title'].upper() + "[/COLOR]")
                         li.setProperty("IsPlayable", "false")
                         xbmcplugin.addDirectoryItem(handle=_addon_handler, url="", listitem=li)
+
                     title = group_element['title'] if group_element['title'] else "[B]" + content['title'].upper() + "[/B]"
                     if not title.strip():
                         title = __language__(30003)
@@ -250,7 +251,7 @@ def getpage():
 
 def geteventLane():
     response = urllib.urlopen(base_url + args['eventLane']).read()
-
+    xbmc.log('hieraddsg'+base_url + args['eventLane'])
     jsonResult = json.loads(response)
 
     eventday = None;
@@ -267,12 +268,25 @@ def geteventLane():
             title = __language__(30003)
            
             if event['metadata']['title']:
-                title = event['metadata']['title']
+                if event['type'] in ['teamEvent', 'skyTeamEvent', 'fcbEvent']:
+                    if event['metadata']['state'] == 'live':
+                        title = __language__(30004) + ': ' + event['metadata']['name']
+                    else:
+                        title = str(prettytime(scheduled_start)) + " Uhr: " + event['metadata']['name']
+                else:
+                    #Top 10 etc.
+                    title = event['metadata']['title']
             else:
                 if event['type'] in ['teamEvent', 'skyTeamEvent'] and 'details' in event['metadata'] and 'home' in event['metadata']['details']:
-                    title = event['metadata']['details']['home']['name_full'] + ' - ' + event['metadata']['details']['away']['name_full']
+                    if event['metadata']['state'] == 'live':
+                        title = __language__(30004) + ': ' + event['metadata']['details']['home']['name_full'] + ' - ' + event['metadata']['details']['away']['name_full']
+                    else:
+                        title = str(prettytime(scheduled_start)) + " Uhr: "+event['metadata']['details']['home']['name_full'] + ' - ' + event['metadata']['details']['away']['name_full']
                 elif event['metadata']['description_bold']:
-                    title = event['metadata']['description_bold']
+                    if event['metadata']['state'] == 'live':
+                        title = __language__(30004) + ': ' + event['metadata']['description_bold']
+                    else:
+                        title = str(prettytime(scheduled_start)) + " Uhr: " + event['metadata']['description_bold']
 
             eventinfo = event['metadata']['description_bold'] + ' - ' + event['metadata']['description_regular']
             li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')', iconImage=base_image_url + event['metadata']['images']['editorial'])
