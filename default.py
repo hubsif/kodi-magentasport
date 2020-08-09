@@ -156,6 +156,7 @@ def getMain():
                         break
 
             if liveevent:
+                liveevent = False
                 for slots in elements['slots']:
                     scheduled_start = datetime.utcfromtimestamp(int(slots['slot_time']['utc_timestamp']))
                     for events in slots['events']:
@@ -172,6 +173,7 @@ def getMain():
                                     counterLive = counterLive + 1
                                     ausgabeCounterLive1 = events['metadata']['name'] + " (" + events['metadata'][
                                         'description_bold'] + ' - ' + events['metadata']['description_regular'] + ')'
+                                    liveevent = True
 
         if liveevent:
             ueberschrift = ''
