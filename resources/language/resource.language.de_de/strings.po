@@ -52,3 +52,7 @@ msgstr "Passwort"
 msgctxt "#30011"
 msgid "Error response from server:"
 msgstr "Fehlermeldung vom Server:"
+
+msgctxt "#30020"
+msgid "Api-Version"
+msgstr "Api-Version"
