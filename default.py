@@ -53,7 +53,8 @@ jwt_url = "https://www.magentasport.de/service/auth/app/login/jwt"
 heartbeat_url = "https://www.magentasport.de/service/heartbeat"
 stream_url = "https://www.magentasport.de/service/player/streamAccess"
 main_page = "/navigation"
-schedule_url = "" # wird unten eingestellt
+schedule_url = "/components/programm/18"
+#schedule_url = "/epg/28" # alt
 api_salt = '55!#r%Rn3%xn?U?PX*k'
 accesstoken = ''
 api_version = 0
@@ -124,7 +125,7 @@ def urlopen(urlEnd):
         utc = int(
             (datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - datetime(1970, 1, 1)).total_seconds())
         accesstoken = generate_hash256('{0}{1}{2}'.format(api_salt, utc, base_api + urlEnd))
-        xbmc.log('Token erzeugt für '+str(main_page))
+        xbmc.log('Token erzeugt für '+str(urlEnd))
         response = urllib.urlopen(base_url + base_api + urlEnd + '?token=' + accesstoken).read()
         xbmc.log('hier000 ' + str(base_url + base_api + urlEnd + '?token=' + accesstoken))
     else:
@@ -135,38 +136,26 @@ def urlopen(urlEnd):
     return response
 
 def doppelterBodenLiveEvent():
+    xbmc.log('Ich gehe hier durch: doppelterBodenLiveEvent')
+    counterLive = 0
     liveevent = False
+    ausgabeCounterLive1 = ''
     schedule = json.loads(urlopen(schedule_url))
-    for elements in schedule['data']['elements']:
+    for datas in schedule['data']['data']:
         url = ""
         # schauen ob Liveevent vorhanen:
-        for slots in elements['slots']:
-            liveeventVorhanden = False
+        for slots in datas['slots']:
             scheduled_start = datetime.utcfromtimestamp(int(slots['slot_time']['utc_timestamp']))
             for events in slots['events']:
-                if not events['metadata']['state'] == 'post':
-                    liveevent = True
-                    break
+                if not events['type'] == 'fcbEvent' or events['metadata']['name'][:4] == 'LIVE':
+                    scheduled_start = datetime.utcfromtimestamp(
+                        int(events['metadata']['scheduled_start']['utc_timestamp']))
 
-        if liveevent:
-            liveevent = False
-            for slots in elements['slots']:
-                scheduled_start = datetime.utcfromtimestamp(int(slots['slot_time']['utc_timestamp']))
-                for events in slots['events']:
-                    if not events['metadata']['state'] == 'post':
-                        if not events['type'] == 'fcbEvent' or events['metadata']['name'][:4] == 'LIVE':
-                            scheduled_start = datetime.utcfromtimestamp(
-                                int(events['metadata']['scheduled_start']['utc_timestamp']))
-
-                            url = ""
-                            eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata'][
-                                'description_regular']
-
-                            if events['metadata']['state'] == 'live':
-                                counterLive = counterLive + 1
-                                ausgabeCounterLive1 = events['metadata']['name'] + " (" + events['metadata'][
-                                    'description_bold'] + ' - ' + events['metadata']['description_regular'] + ')'
-                                liveevent = True
+                    if slots['is_live'] or events['metadata']['state'] == 'live':
+                        counterLive = counterLive + 1
+                        ausgabeCounterLive1 = events['metadata']['name'] + " (" + events['metadata'][
+                            'description_bold'] + ' - ' + events['metadata']['description_regular'] + ')'
+                        liveevent = True
 
     if liveevent:
         ueberschrift = ''
@@ -180,6 +169,7 @@ def doppelterBodenLiveEvent():
         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
 def doppelterBodenFCBayernTVlive(jsonResult):
+    xbmc.log('Ich gehe hier durch: doppelterBodenFCBayernTVlive')
     erstesEvent = False
     for content in jsonResult['data']['league_filter']:
         if content['title'] == 'FC Bayern.tv live':
@@ -289,61 +279,54 @@ def getschedule():
     #1: nur live
     scheduled_start_Vorgaenger =''
     eventStreamLink = ''
+    bereitsangelegtnurLive = False
     schedule = json.loads(urlopen(schedule_url))
-    for elements in schedule['data']['elements']:
+    for datas in schedule['data']['data']:
         url = ""
-        #schauen ob Liveevent vorhanen:
-        for slots in elements['slots']:
-            liveeventVorhanden = False
+        for slots in datas['slots']:
             scheduled_start = datetime.utcfromtimestamp(int(slots['slot_time']['utc_timestamp']))
             for events in slots['events']:
                 if not events['metadata']['state'] == 'post':
-                    liveeventVorhanden = True
-                    break
-
-        if liveeventVorhanden:
-            for slots in elements['slots']:
-                scheduled_start = datetime.utcfromtimestamp(int(slots['slot_time']['utc_timestamp']))
-                for events in slots['events']:
-                    if not events['metadata']['state'] == 'post':
-                        if not events['type'] == 'fcbEvent' or events['metadata']['name'][:4] == 'LIVE':
-                            scheduled_start = datetime.utcfromtimestamp(
-                                int(events['metadata']['scheduled_start']['utc_timestamp']))
-                            if not scheduled_start_Vorgaenger == prettydate(scheduled_start, False):
+                    if not events['type'] == 'fcbEvent' or events['metadata']['name'][:4] == 'LIVE':
+                        scheduled_start = datetime.utcfromtimestamp(
+                            int(events['metadata']['scheduled_start']['utc_timestamp']))
+                        if not scheduled_start_Vorgaenger == prettydate(scheduled_start, False):
+                            if (args['onlyLiveYesNo'][0] == '1' and not bereitsangelegtnurLive) or args['onlyLiveYesNo'][0] == '0':
                                 li = xbmcgui.ListItem("[COLOR gold]" + prettydate(scheduled_start, False) + "[/COLOR]")
                                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
                                                                 isFolder=True)
                                 scheduled_start_Vorgaenger = prettydate(scheduled_start, False)
+                                bereitsangelegtnurLive = True
 
-                            url = ""
-                            eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata']['description_regular']
+                        url = ""
+                        eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata']['description_regular']
 
-                            if events['metadata']['state'] == 'live':
-                                title = __language__(30004) + ': ' + events['metadata']['name']
-                                li.setProperty('IsPlayable', 'true')
-                                li.setInfo('video', {'plot': prettydate(scheduled_start)})
-                                li.setProperty('icon',
-                                               base_image_url + events['metadata']['images']['editorial'])
-                                eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata'][
-                                    'description_regular']
+                        if events['metadata']['state'] == 'live' or slots['is_live']:
+                            title = __language__(30004) + ': ' + events['metadata']['name']
+                            li.setProperty('IsPlayable', 'true')
+                            li.setInfo('video', {'plot': prettydate(scheduled_start)})
+                            li.setProperty('icon',
+                                           base_image_url + events['metadata']['images']['editorial'])
+                            eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata'][
+                                'description_regular']
+                            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')',
+                                                  iconImage=base_image_url + events['metadata']['images'][
+                                                      'editorial'])
+                            eventStreamLink = str(events['target'])+'/'+str(events['metadata']['active_video_id'])
+                            xbmc.log('eventstreamlink: '+eventStreamLink)
+                            li.setProperty('IsPlayable', 'true')
+                            url = build_url({'mode': 'event', 'event': eventStreamLink, 'live': True})
+                            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+
+                        else:
+                            if args['onlyLiveYesNo'][0] == '0':
+                                title = str(prettytime(scheduled_start))+" Uhr: "+events['metadata']['name']
+                                li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
                                 li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')',
                                                       iconImage=base_image_url + events['metadata']['images'][
                                                           'editorial'])
-                                eventStreamLink = str(events['target'])+'/'+str(events['metadata']['active_video_id'])
-
-                                li.setProperty('IsPlayable', 'true')
-                                url = build_url({'mode': 'event', 'event': eventStreamLink, 'live': True})
+                                li.setInfo('video', {'plot': prettydate(scheduled_start)})
                                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
-
-                            else:
-                                if args['onlyLiveYesNo'][0] == '0':
-                                    title = str(prettytime(scheduled_start))+" Uhr: "+events['metadata']['name']
-                                    li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
-                                    li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')',
-                                                          iconImage=base_image_url + events['metadata']['images'][
-                                                              'editorial'])
-                                    li.setInfo('video', {'plot': prettydate(scheduled_start)})
-                                    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
 
 
     xbmcplugin.endOfDirectory(_addon_handler)
@@ -432,6 +415,7 @@ def geteventLane():
     xbmcplugin.endOfDirectory(_addon_handler)
 
 def getevent():
+    xbmc.log('ich starte das event '+str(args['event']))
     jsonResult = json.loads(urlopen(args['event']))
     if jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'noVideo':
         scheduled_start = datetime.utcfromtimestamp(int(jsonResult['data']['content'][0]['group_elements'][0]['data']['metadata']['scheduled_start']['utc_timestamp']))
@@ -530,11 +514,8 @@ if api_version == 0:
     api_version = 0
     if _addon.getSetting('api_version') == 'V2':
         api_version = 2
-        schedule_url = "/epg/28"
     elif _addon.getSetting('api_version') == 'V3':
         api_version = 3
-        # schedule_url = "/components/programm/18" ggf. noch darauf umstellen
-        schedule_url = "/epg/28"
 
     base_api = base_api + str(api_version)
     xbmc.log('Api-Version: '+str(api_version))

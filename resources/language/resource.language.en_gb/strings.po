@@ -54,5 +54,5 @@ msgid "Error response from server:"
 msgstr ""
 
 msgctxt "#30020"
-msgid "api-version"
-msgstr "api-version"
+msgid "Api-version"
+msgstr "Api-version"
