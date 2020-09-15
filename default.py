@@ -303,7 +303,6 @@ def getschedule():
 
                         if events['metadata']['state'] == 'live' or slots['is_live']:
                             title = __language__(30004) + ': ' + events['metadata']['name']
-                            li.setProperty('IsPlayable', 'true')
                             li.setInfo('video', {'plot': prettydate(scheduled_start)})
                             li.setProperty('icon',
                                            base_image_url + events['metadata']['images']['editorial'])
@@ -313,7 +312,6 @@ def getschedule():
                                                   iconImage=base_image_url + events['metadata']['images'][
                                                       'editorial'])
                             eventStreamLink = str(events['target'])+'/'+str(events['metadata']['active_video_id'])
-                            xbmc.log('eventstreamlink: '+eventStreamLink)
                             li.setProperty('IsPlayable', 'true')
                             url = build_url({'mode': 'event', 'event': eventStreamLink, 'live': True})
                             xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
