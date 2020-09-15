@@ -168,11 +168,12 @@ def doppelterBodenLiveEvent():
         li = xbmcgui.ListItem(ueberschrift)
         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
-def doppelterBodenFCBayernTVlive(jsonResult):
+def doppelterBodenFCBayernTVlive\
+                (jsonResult):
     xbmc.log('Ich gehe hier durch: doppelterBodenFCBayernTVlive')
     erstesEvent = False
     for content in jsonResult['data']['league_filter']:
-        if content['title'] == 'FC Bayern.tv live':
+        if content['title'].lower() == 'fc bayern.tv live':
             jsonFCBayern = json.loads(urlopen(content['target']))
             for content in jsonFCBayern['data']['content']:
                 if content['title'] == 'LIVE':
@@ -280,6 +281,7 @@ def getschedule():
     scheduled_start_Vorgaenger =''
     eventStreamLink = ''
     bereitsangelegtnurLive = False
+    bereitsangelegtnurLiveInfo = False
     schedule = json.loads(urlopen(schedule_url))
     for datas in schedule['data']['data']:
         url = ""
@@ -291,6 +293,13 @@ def getschedule():
                         scheduled_start = datetime.utcfromtimestamp(
                             int(events['metadata']['scheduled_start']['utc_timestamp']))
                         if not scheduled_start_Vorgaenger == prettydate(scheduled_start, False):
+                            if not bereitsangelegtnurLiveInfo:
+                                li = xbmcgui.ListItem(
+                                    "Hinweis: Falls ein Livestream nicht startet bitte via der Ligaauswahl auf der Startseite starten!")
+                                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
+                                                            isFolder=True)
+                                bereitsangelegtnurLiveInfo = True
+
                             if (args['onlyLiveYesNo'][0] == '1' and not bereitsangelegtnurLive) or args['onlyLiveYesNo'][0] == '0':
                                 li = xbmcgui.ListItem("[COLOR gold]" + prettydate(scheduled_start, False) + "[/COLOR]")
                                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
@@ -303,17 +312,19 @@ def getschedule():
 
                         if events['metadata']['state'] == 'live' or slots['is_live']:
                             title = __language__(30004) + ': ' + events['metadata']['name']
-                            li.setInfo('video', {'plot': prettydate(scheduled_start)})
-                            li.setProperty('icon',
-                                           base_image_url + events['metadata']['images']['editorial'])
                             eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata'][
                                 'description_regular']
+
                             li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')',
                                                   iconImage=base_image_url + events['metadata']['images'][
                                                       'editorial'])
-                            eventStreamLink = str(events['target'])+'/'+str(events['metadata']['active_video_id'])
+                            li.setProperty('icon',
+                                           base_image_url + events['metadata']['images']['editorial'])
+                            li.setInfo('video', {'plot': prettydate(scheduled_start)})
                             li.setProperty('IsPlayable', 'true')
-                            url = build_url({'mode': 'event', 'event': eventStreamLink, 'live': True})
+                            li.setInfo('video', {})
+                            url = build_url({'mode': 'event', 'event': str(events['target'])+'/'+str(events['metadata']['active_video_id']), 'live': True})
+
                             xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
 
                         else:
@@ -405,6 +416,7 @@ def geteventLane():
                 li.setProperty('IsPlayable', 'true')
                 li.setInfo('video', {})
                 url = build_url({'mode': 'event', 'event': event['target'], 'live': True})
+                xbmc.log('streamlink: '+str( event['target']))
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
             elif not ('onlylive' in args and args['onlylive']):
                 url = build_url({'mode': 'event', 'event': event['target']})
