@@ -24,7 +24,7 @@ import urllib2
 import urlparse
 import time
 import md5
-from datetime import datetime
+from datetime import datetime, timedelta
 from random import randint
 from hashlib import sha256
 from re import search
@@ -123,7 +123,9 @@ def urlopen(urlEnd):
     response = ''
     if api_version == 3:
         utc = int(
-            (datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - datetime(1970, 1, 1)).total_seconds())
+            ((datetime.now() - timedelta(hours=5)).replace(hour=0, minute=0, second=0, microsecond=0) - datetime(1970,
+                                                                                                                 1,
+                                                                                                                 1)).total_seconds())
         accesstoken = generate_hash256('{0}{1}{2}'.format(api_salt, utc, base_api + urlEnd))
         xbmc.log('Token erzeugt für '+str(urlEnd))
         response = urllib.urlopen(base_url + base_api + urlEnd + '?token=' + accesstoken).read()
@@ -296,6 +298,10 @@ def getschedule():
                             if not bereitsangelegtnurLiveInfo:
                                 li = xbmcgui.ListItem(
                                     "Hinweis: Falls ein Livestream nicht startet bitte via der Ligaauswahl auf der Startseite starten!")
+                                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
+                                                            isFolder=True)
+                                li = xbmcgui.ListItem(
+                                    "Hinweis: Falls der Stream kein Livebild zeigt: Livestream vorspulen!")
                                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
                                                             isFolder=True)
                                 bereitsangelegtnurLiveInfo = True
