@@ -153,7 +153,7 @@ def doppelterBodenLiveEvent():
                     scheduled_start = datetime.utcfromtimestamp(
                         int(events['metadata']['scheduled_start']['utc_timestamp']))
 
-                    if slots['is_live'] or events['metadata']['state'] == 'live':
+                    if (slots['is_live'] or events['metadata']['state'] == 'live') and not events['metadata']['state'] == 'canceled':
                         counterLive = counterLive + 1
                         ausgabeCounterLive1 = events['metadata']['name'] + " (" + events['metadata'][
                             'description_bold'] + ' - ' + events['metadata']['description_regular'] + ')'
@@ -317,7 +317,10 @@ def getschedule():
                         eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata']['description_regular']
 
                         if events['metadata']['state'] == 'live' or slots['is_live']:
-                            title = __language__(30004) + ': ' + events['metadata']['name']
+                            title = ''
+                            if events['metadata']['state'] == 'canceled':
+                                title = __language__(30030)+" - "
+                            title = title + __language__(30004) + ': ' + events['metadata']['name']
                             eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata'][
                                 'description_regular']
 
@@ -335,7 +338,10 @@ def getschedule():
 
                         else:
                             if args['onlyLiveYesNo'][0] == '0':
-                                title = str(prettytime(scheduled_start))+" Uhr: "+events['metadata']['name']
+                                title = ''
+                                if events['metadata']['state'] == 'canceled':
+                                    title = __language__(30030)+" - "
+                                title = title + str(prettytime(scheduled_start))+" Uhr: "+events['metadata']['name']
                                 li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
                                 li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')',
                                                       iconImage=base_image_url + events['metadata']['images'][
