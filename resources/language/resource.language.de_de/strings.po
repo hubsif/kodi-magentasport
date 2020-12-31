@@ -56,3 +56,7 @@ msgstr "Fehlermeldung vom Server:"
 msgctxt "#30020"
 msgid "Api-Version"
 msgstr "Api-Version"
+
+msgctxt "#30030"
+msgid "Canceled"
+msgstr "Abgesagt"
