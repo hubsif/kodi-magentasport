@@ -56,3 +56,7 @@ msgstr ""
 msgctxt "#30020"
 msgid "Api-version"
 msgstr "Api-version"
+
+msgctxt "#30030"
+msgid "Canceled"
+msgstr "Canceled"
