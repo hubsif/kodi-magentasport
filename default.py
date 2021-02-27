@@ -19,18 +19,23 @@
 import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import os, sys, re, json, string, random, time
 import xml.etree.ElementTree as ET
-import urllib
-import urllib2
-import urlparse
+import urllib.parse as urllib
+#import urllib2
+import urllib.request
+import urllib.error
+#import urlparse
+import urllib.parse as urlparse
 import time
-import md5
+#import md5
+import hashlib as md5
 from datetime import datetime, timedelta
 from random import randint
 from hashlib import sha256
 from re import search
+import importlib
 
-reload(sys)
-sys.setdefaultencoding('utf8')
+importlib.reload(sys)
+#sys.setdefaultencoding('utf8')
 
 _addon_id      = 'plugin.video.telekomsport'
 _addon         = xbmcaddon.Addon(id=_addon_id)
@@ -43,7 +48,6 @@ __language__   = _addon.getLocalizedString
 #_fanart_path   = _addon_path + "/resources/fanart/"
 
 xbmcplugin.setContent(_addon_handler, 'episodes')
-
 
 base_url = "https://www.magentasport.de"
 base_api = "/api/v" # + str(api_version) # wird unten angefügt
@@ -66,7 +70,7 @@ api_version = 0
 # helper functions
 
 def build_url(query):
-    return _addon_url + '?' + urllib.urlencode(query)
+    return _addon_url + '?' + urlparse.urlencode(query)
 
 def prettydate(dt, addtime=True):
     dt = dt + utc_offset()
@@ -88,25 +92,26 @@ def utc_offset():
 
 def get_jwt(username, password):
     data = { "claims": "{'id_token':{'urn:telekom.com:all':null}}", "client_id": "10LIVESAM30000004901TSMAPP00000000000000", "grant_type": "password", "scope": "tsm offline_access", "username": username, "password": password }
-    response = urllib2.urlopen(urllib2.Request(oauth_url, urllib.urlencode(data), {'Content-Type': 'application/json'})).read()
+    #xbmc.log("hieradf: "+str(urllib.request.Request(oauth_url, urllib.parse.urlencode(data), {'Content-Type': 'application/json'})).read())
+    response = urllib.request.urlopen(urllib.request.Request(oauth_url, urllib.parse.urlencode(data).encode(), {'Content-Type': 'application/json'})).read()
     jsonResult = json.loads(response)
 
     if 'access_token' in jsonResult:
-        response = urllib2.urlopen(urllib2.Request(jwt_url, json.dumps({"token": jsonResult['access_token']}), {'Content-Type': 'application/json'})).read()
+        response = urllib.request.urlopen(urllib.request.Request(jwt_url, json.dumps({"token": jsonResult['access_token']}).encode(), {'Content-Type': 'application/json'})).read()
         jsonResult = json.loads(response)
         if 'status' in jsonResult and jsonResult['status'] == "success" and 'data' in jsonResult and 'token' in jsonResult['data']:
             return jsonResult['data']['token']
 
 def auth_media(jwt, videoid):
     try:
-        response = urllib2.urlopen(urllib2.Request(heartbeat_url + '/initialize', json.dumps({"media": videoid}), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
-    except urllib2.HTTPError, error:
+        response = urllib.request.urlopen(urllib.request.Request(heartbeat_url + '/initialize', json.dumps({"media": videoid}).encode(), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+    except urllib.error.HTTPError as error:
         response = error.read()
 
-    try:
-        urllib2.urlopen(urllib2.Request(heartbeat_url + '/destroy', "", {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
-    except urllib2.HTTPError, e:
-        pass
+    #try:
+    #    urllib.request.urlopen(urllib.request.Request(heartbeat_url + '/destroy', "", {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+    #except urllib.error.HTTPError as e:
+    #    pass
 
     jsonResult = json.loads(response)
     if 'status' in jsonResult and jsonResult['status'] == "success":
@@ -128,10 +133,10 @@ def urlopen(urlEnd):
                                                                                                                  1)).total_seconds())
         accesstoken = generate_hash256('{0}{1}{2}'.format(api_salt, utc, base_api + urlEnd))
         xbmc.log('Token erzeugt für '+str(urlEnd))
-        response = urllib.urlopen(base_url + base_api + urlEnd + '?token=' + accesstoken).read()
+        response = urllib.request.urlopen(base_url + base_api + urlEnd + '?token=' + accesstoken).read()
         xbmc.log('hier000 ' + str(base_url + base_api + urlEnd + '?token=' + accesstoken))
     else:
-        response = urllib.urlopen(base_url + base_api + urlEnd).read()
+        response = urllib.request.urlopen(base_url + base_api + urlEnd).read()
         xbmc.log('hier000 ' + str(base_url + base_api + urlEnd))
 
     xbmc.log('hier111 ' + str(response))
@@ -324,9 +329,8 @@ def getschedule():
                             eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata'][
                                 'description_regular']
 
-                            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')',
-                                                  iconImage=base_image_url + events['metadata']['images'][
-                                                      'editorial'])
+                            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
+                            li.setArt({'icon': base_image_url + events['metadata']['images']['editorial']})
                             li.setProperty('icon',
                                            base_image_url + events['metadata']['images']['editorial'])
                             li.setInfo('video', {'plot': prettydate(scheduled_start)})
@@ -343,9 +347,8 @@ def getschedule():
                                     title = __language__(30030)+" - "
                                 title = title + str(prettytime(scheduled_start))+" Uhr: "+events['metadata']['name']
                                 li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
-                                li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')',
-                                                      iconImage=base_image_url + events['metadata']['images'][
-                                                          'editorial'])
+                                li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
+                                li.setArt({'icon': base_image_url + events['metadata']['images']['editorial']})
                                 li.setInfo('video', {'plot': prettydate(scheduled_start)})
                                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
 
@@ -397,7 +400,7 @@ def geteventLane():
                 eventday = scheduled_start.date()
 
             title = __language__(30003)
-           
+
             if event['metadata']['title']:
                 if event['type'] in ['teamEvent', 'skyTeamEvent', 'fcbEvent']:
                     if event['metadata']['state'] == 'live':
@@ -420,7 +423,8 @@ def geteventLane():
                         title = str(prettytime(scheduled_start)) + " Uhr: " + event['metadata']['description_bold']
 
             eventinfo = event['metadata']['description_bold'] + ' - ' + event['metadata']['description_regular']
-            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')', iconImage=base_image_url + event['metadata']['images']['editorial'])
+            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
+            li.setArt({'icon': base_image_url + event['metadata']['images']['editorial']})
             li.setInfo('video', {'plot': prettydate(scheduled_start)})
             li.setProperty('icon', base_image_url + event['metadata']['images']['editorial'])
 
@@ -449,9 +453,9 @@ def getevent():
     elif 'live' in args and args['live']:
         if jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'player':
             eventVideo = jsonResult['data']['content'][0]['group_elements'][0]['data'][0]
-            global args
-            args = {'videoid': eventVideo['videoID'], 'isPay': 'True' if ('pay' in eventVideo and eventVideo['pay']) else 'False'}
-            getvideo()
+            #global args
+            #args = {'videoid': eventVideo['videoID'], 'isPay': 'True' if ('pay' in eventVideo and eventVideo['pay']) else 'False'}
+            getvideo2(eventVideo['videoID'], 'True' if ('pay' in eventVideo and eventVideo['pay']) else 'False')
     else:
         for index, content in enumerate(jsonResult['data']['content']):
             for group_element in content['group_elements']:
@@ -459,7 +463,8 @@ def getevent():
                     for eventVideo in group_element['data']:
                         isPay = 'pay' in eventVideo and eventVideo['pay']
                         url = build_url({'mode': 'video', 'videoid': eventVideo['videoID'], 'isPay': isPay})
-                        li = xbmcgui.ListItem(eventVideo['title'], iconImage=base_image_url + eventVideo['images']['editorial'])
+                        li = xbmcgui.ListItem(eventVideo['title'])
+                        li.setArt({'icon': base_image_url + eventVideo['images']['editorial']})
                         li.setProperty('icon', base_image_url + eventVideo['images']['editorial'])
                         li.setProperty('IsPlayable', 'true')
                         li.setInfo('video', {})
@@ -467,10 +472,11 @@ def getevent():
         xbmcplugin.endOfDirectory(_addon_handler)
 
 def getvideo():
-    videoid = args['videoid']
+    getvideo2(args['videoid'], args['isPay'])
 
+def getvideo2(videoid, isPay):
     jwt = None
-    if args['isPay'] == 'True':
+    if isPay == 'True':
         if not _addon.getSetting('username'):
             xbmcgui.Dialog().ok(_addon_name, __language__(30007))
             _addon.openSettings()
@@ -478,7 +484,7 @@ def getvideo():
         else:
             try:
                 jwt = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'))
-            except urllib2.HTTPError, e:
+            except urllib.error.HTTPError as e:
                 response = json.loads(e.read())
                 msg = __language__(30005)
                 if 'error_description' in response:
@@ -501,18 +507,18 @@ def getvideo():
 
     jwt = jwt or 'empty'
 
-    response = urllib2.urlopen(urllib2.Request(stream_url, json.dumps({ 'videoId': videoid}), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+    response = urllib.request.urlopen(urllib.request.Request(stream_url, json.dumps({ 'videoId': videoid}).encode(), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
     jsonResult = json.loads(response)
     url = 'https:' + jsonResult['data']['stream-access'][0]
 
-    response = urllib.urlopen(url).read()
+    response = urllib.request.urlopen(url).read()
 
     xmlroot = ET.ElementTree(ET.fromstring(response))
     playlisturl = xmlroot.find('token').get('url')
     auth = xmlroot.find('token').get('auth')
 
     listitem = xbmcgui.ListItem(path=playlisturl + "?hdnea=" + auth)
-    listitem.setProperty('inputstreamaddon', 'inputstream.adaptive')
+    listitem.setProperty('inputstream', 'inputstream.adaptive')
     listitem.setProperty('inputstream.adaptive.manifest_type', 'hls')
     xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
 
@@ -551,6 +557,5 @@ args = dict(urlparse.parse_qsl(sys.argv[2][1:]))
 mode = args.get('mode', None)
 xbmc.log('ich gehe hier nun hin: '+str(mode))
 if mode is None:
-    mode = "Main"
-
+    mode = 'Main'
 locals()['get' + mode]()
