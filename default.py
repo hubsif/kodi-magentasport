@@ -19,13 +19,10 @@
 import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import os, sys, re, json, string, random, time
 import xml.etree.ElementTree as ET
-import urllib
-import urllib2
-import urlparse
+import urllib.parse
+import urllib.request
 import time
-import md5
 from datetime import datetime
-from random import randint
 
 _addon_id      = 'plugin.video.magentasport'
 _addon         = xbmcaddon.Addon(id=_addon_id)
@@ -54,7 +51,7 @@ main_page = "/navigation"
 # helper functions
 
 def build_url(query):
-    return _addon_url + '?' + urllib.urlencode(query)
+    return _addon_url + '?' + urllib.parse.urlencode(query)
 
 def prettydate(dt, addtime=True):
     dt = dt + utc_offset()
@@ -69,24 +66,24 @@ def utc_offset():
 
 def get_jwt(username, password):
     data = { "claims": "{'id_token':{'urn:telekom.com:all':null}}", "client_id": "10LIVESAM30000004901TSMAPP00000000000000", "grant_type": "password", "scope": "tsm offline_access", "username": username, "password": password }
-    response = urllib2.urlopen(urllib2.Request(oauth_url, urllib.urlencode(data), {'Content-Type': 'application/json'})).read()
+    response = urllib.request.urlopen(urllib.request.Request(oauth_url, urllib.parse.urlencode(data).encode(), {'Content-Type': 'application/json'})).read()
     jsonResult = json.loads(response)
 
     if 'access_token' in jsonResult:
-        response = urllib2.urlopen(urllib2.Request(jwt_url, json.dumps({"token": jsonResult['access_token']}), {'Content-Type': 'application/json'})).read()
+        response = urllib.request.urlopen(urllib.request.Request(jwt_url, json.dumps({"token": jsonResult['access_token']}).encode(), {'Content-Type': 'application/json'})).read()
         jsonResult = json.loads(response)
         if 'status' in jsonResult and jsonResult['status'] == "success" and 'data' in jsonResult and 'token' in jsonResult['data']:
             return jsonResult['data']['token']
 
 def auth_media(jwt, videoid):
     try:
-        response = urllib2.urlopen(urllib2.Request(heartbeat_url + '/initialize', json.dumps({"media": videoid}), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
-    except urllib2.HTTPError, error:
+        response = urllib.request.urlopen(urllib.request.Request(heartbeat_url + '/initialize', json.dumps({"media": videoid}).encode(), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+    except urllib.error.HTTPError as error:
         response = error.read()
 
     try:
-        urllib2.urlopen(urllib2.Request(heartbeat_url + '/destroy', "", {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
-    except urllib2.HTTPError, e:
+        urllib.request.urlopen(urllib.request.Request(heartbeat_url + '/destroy', "", {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+    except urllib.error.HTTPError as e:
         pass
 
     jsonResult = json.loads(response)
@@ -100,11 +97,11 @@ def auth_media(jwt, videoid):
 # plugin call modes
 
 def getMain():
-    response = urllib.urlopen(base_url + main_page).read()
+    response = urllib.request.urlopen(base_url + main_page).read()
     jsonResult = json.loads(response)
 
     # get currently running games
-    response = urllib.urlopen(base_url + jsonResult['data']['main']['target']).read()
+    response = urllib.request.urlopen(base_url + jsonResult['data']['main']['target']).read()
     jsonLive = json.loads(response)
     for content in jsonLive['data']['content']:
         if content['title'] == 'Live':
@@ -130,7 +127,7 @@ def getMain():
 
 
 def getpage():
-    response = urllib.urlopen(base_url + args['page']).read()
+    response = urllib.request.urlopen(base_url + args['page']).read()
     jsonResult = json.loads(response)
 
     count = 0
@@ -161,7 +158,7 @@ def getpage():
     xbmcplugin.endOfDirectory(_addon_handler)
 
 def geteventLane():
-    response = urllib.urlopen(base_url + args['eventLane']).read()
+    response = urllib.request.urlopen(base_url + args['eventLane']).read()
     jsonResult = json.loads(response)
 
     eventday = None;
@@ -183,8 +180,12 @@ def geteventLane():
                     title = event['metadata']['details']['home']['name_full'] + ' - ' + event['metadata']['details']['away']['name_full']
                 elif event['metadata']['description_bold']:
                     title = event['metadata']['description_bold']
-            eventinfo = event['metadata']['description_bold'] + ' - ' + event['metadata']['description_regular']
-            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')', iconImage=base_image_url + event['metadata']['images']['editorial'])
+            eventinfo = ""
+            if event['metadata']['description_regular']: eventinfo += event['metadata']['description_regular']
+            fulltitle = '[B]' + title + '[/B]'
+            if eventinfo: fulltitle += ' (' + eventinfo + ')'
+            li = xbmcgui.ListItem(fulltitle)
+            li.setArt({'icon': base_image_url + event['metadata']['images']['editorial']})
             li.setInfo('video', {'plot': prettydate(scheduled_start)})
             li.setProperty('fanart_image', base_image_url + event['metadata']['images']['editorial'])
 
@@ -200,7 +201,8 @@ def geteventLane():
     xbmcplugin.endOfDirectory(_addon_handler)
 
 def getevent():
-    response = urllib.urlopen(base_url + args['event']).read()
+    global args
+    response = urllib.request.urlopen(base_url + args['event']).read()
     jsonResult = json.loads(response)
 
     if jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'noVideo':
@@ -213,7 +215,6 @@ def getevent():
     elif 'live' in args and args['live']:
         if jsonResult['data']['content'][0]['group_elements'][0]['type'] == 'player':
             eventVideo = jsonResult['data']['content'][0]['group_elements'][0]['data'][0]
-            global args
             args = {'videoid': eventVideo['videoID'], 'isPay': 'True' if ('pay' in eventVideo and eventVideo['pay']) else 'False'}
             getvideo()
     else:
@@ -223,7 +224,8 @@ def getevent():
                     for eventVideo in group_element['data']:
                         isPay = 'pay' in eventVideo and eventVideo['pay']
                         url = build_url({'mode': 'video', 'videoid': eventVideo['videoID'], 'isPay': isPay})
-                        li = xbmcgui.ListItem(eventVideo['title'], iconImage=base_image_url + eventVideo['images']['editorial'])
+                        li = xbmcgui.ListItem(eventVideo['title'])
+                        li.setArt({'icon': base_image_url + eventVideo['images']['editorial']})
                         li.setProperty('fanart_image', base_image_url + eventVideo['images']['editorial'])
                         li.setProperty('IsPlayable', 'true')
                         li.setInfo('video', {})
@@ -242,7 +244,7 @@ def getvideo():
         else:
             try:
                 jwt = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'))
-            except urllib2.HTTPError, e:
+            except urllib.error.HTTPError as e:
                 response = json.loads(e.read())
                 msg = __language__(30005)
                 if 'error_description' in response:
@@ -265,11 +267,11 @@ def getvideo():
 
     jwt = jwt or 'empty'
 
-    response = urllib2.urlopen(urllib2.Request(stream_url, json.dumps({ 'videoId': videoid}), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+    response = urllib.request.urlopen(urllib.request.Request(stream_url, json.dumps({ 'videoId': videoid}).encode(), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
     jsonResult = json.loads(response)
     url = 'https:' + jsonResult['data']['stream-access'][0]
 
-    response = urllib.urlopen(url).read()
+    response = urllib.request.urlopen(url).read()
 
     xmlroot = ET.ElementTree(ET.fromstring(response))
     playlisturl = xmlroot.find('token').get('url')
@@ -285,19 +287,8 @@ def getvideo():
 # main routine
 ##############
 
-# urllib ssl fix
-import ssl
-from functools import wraps
-def sslwrap(func):
-    @wraps(func)
-    def bar(*args, **kw):
-        kw['ssl_version'] = ssl.PROTOCOL_TLSv1
-        return func(*args, **kw)
-    return bar
-ssl.wrap_socket = sslwrap(ssl.wrap_socket)
-
 # get arguments
-args = dict(urlparse.parse_qsl(sys.argv[2][1:]))
+args = dict(urllib.parse.parse_qsl(sys.argv[2][1:]))
 mode = args.get('mode', None)
 
 if mode is None:
