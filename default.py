@@ -82,7 +82,7 @@ def auth_media(jwt, videoid):
         response = error.read()
 
     try:
-        urllib.request.urlopen(urllib.request.Request(heartbeat_url + '/destroy', "", {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+        urllib.request.urlopen(urllib.request.Request(heartbeat_url + '/destroy', "".encode(), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
     except urllib.error.HTTPError as e:
         pass
 
