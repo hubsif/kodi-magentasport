@@ -171,7 +171,7 @@ def doppelterBodenLiveEvent():
         else:
             ueberschrift = '[B]' + __language__(30004) + ': [/B]' + str(counterLive) + ' Events'
 
-        url = build_url({'mode': 'schedule', 'onlyLiveYesNo': '1'})
+        url = build_url({'mode': 'EPG', 'onlyLiveYesNo': '1'})
         li = xbmcgui.ListItem(ueberschrift)
         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
@@ -182,24 +182,29 @@ def doppelterBodenFCBayernTVlive\
     for content in jsonResult['data']['league_filter']:
         if content['title'].lower() == 'fc bayern.tv live':
             jsonFCBayern = json.loads(urlopen(content['target']))
-            for content in jsonFCBayern['data']['content']:
-                if content['title'] == 'LIVE':
-                    for group_element in content['group_elements']:
-                        if group_element['type'] == "eventLane":
-                            for data in group_element['data']:
-                                ausgabe = data['metadata']['name']
-                                scheduled_end = datetime.utcfromtimestamp(
-                                    int(data['metadata']['scheduled_end']['utc_timestamp']))
-                                if erstesEvent == False:
-                                    url = build_url({'mode': group_element['type'],
-                                                     group_element['type']: group_element['data_url']})
-                                    li = xbmcgui.ListItem('[B]FC Bayern.tv live:[/B] ' + ausgabe + ' (bis ' + str(
-                                        prettytime(scheduled_end)) + ' Uhr) [B](24/7-Programm)[/B]')
-                                    li.setArt({'icon': base_image_url + data['metadata']['images']['editorial']})
-                                    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
-                                                                isFolder=True)
-                                    erstesEvent = True
-                                    break
+            for header in jsonFCBayern['data']['navigation']['header']:
+                if header['title'].lower() == 'programm':
+                    url = build_url({'mode': header['target_type'], 'eventLane': header['target']})
+                    jsonFCBayern = json.loads(urlopen(header['target']))
+                    for slots in jsonFCBayern['data']['content'][0]['group_elements'][0]['data'][0]['slots']:
+                        xbmc.log(str(slots))
+                        if slots['is_live']:
+                            scheduled_end = datetime.utcfromtimestamp(
+                                int(slots['slot_time']['utc_timestamp']))
+                            if erstesEvent == False:
+
+                                ausgabe = slots['events'][0]['metadata']['title']
+                                li = xbmcgui.ListItem('[B]FC Bayern.tv live:[/B] ' + ausgabe + ' (bis ' + str(
+                                    prettytime(scheduled_end)) + ' Uhr) [B](24/7-Programm)[/B]')
+                                li.setArt({'icon': base_image_url + slots['events'][0]['metadata']['images']['editorial']})
+                                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
+                                                            isFolder=True)
+                                erstesEvent = True
+                                break
+
+
+
+
 
 # plugin call modes
 def getMain():
@@ -265,7 +270,7 @@ def getMain():
             #doppelter Boden: noch anderweitig die Daten herbekommen:
             doppelterBodenFCBayernTVlive(jsonResult)
 
-    url = build_url({'mode': 'schedule', 'onlyLiveYesNo': '0'})
+    url = build_url({'mode': 'EPG', 'onlyLiveYesNo': '0'})
     li = xbmcgui.ListItem('[B]Programmvorschau[/B] (nächste Liveevents)')
     xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
@@ -281,82 +286,137 @@ def getMain():
 
     xbmcplugin.endOfDirectory(_addon_handler)
 
-def getschedule():
+def createEPG(datas, onlyLiveYesNo, bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, bayernTVAll):
     #onlyLiveYesNo
     #0: alles
     #1: nur live
-    scheduled_start_Vorgaenger =''
+    scheduled_start_Vorgaenger = ''
     eventStreamLink = ''
+    url = ""
+    for slots in datas['slots']:
+        scheduled_start = datetime.utcfromtimestamp(int(slots['slot_time']['utc_timestamp']))
+        for events in slots['events']:
+            if not events['metadata']['state'] == 'post':
+                if not events['type'] == 'fcbEvent' or events['metadata']['name'][:4] == 'LIVE' or bayernTVAll:
+                    scheduled_start = datetime.utcfromtimestamp(
+                        int(events['metadata']['scheduled_start']['utc_timestamp']))
+                    if not scheduled_start_Vorgaenger == prettydate(scheduled_start, False):
+                        if not bereitsangelegtnurLiveInfo:
+                            li = xbmcgui.ListItem(
+                                "Hinweis: Falls ein Livestream nicht startet bitte via der Ligaauswahl auf der Startseite starten!")
+                            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
+                                                        isFolder=True)
+                            li = xbmcgui.ListItem(
+                                "Hinweis: Falls der Stream kein Livebild zeigt: Livestream vorspulen!")
+                            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
+                                                        isFolder=True)
+                            bereitsangelegtnurLiveInfo = True
+
+                        if (onlyLiveYesNo == '1' and not bereitsangelegtnurLive) or onlyLiveYesNo == '0':
+                            li = xbmcgui.ListItem("[COLOR gold]" + prettydate(scheduled_start, False) + "[/COLOR]")
+                            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
+                                                        isFolder=True)
+                            scheduled_start_Vorgaenger = prettydate(scheduled_start, False)
+                            bereitsangelegtnurLive = True
+
+                    url = ""
+                    eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata'][
+                        'description_regular']
+
+                    if events['metadata']['state'] == 'live' or slots['is_live']:
+                        title = ''
+                        if events['metadata']['state'] == 'canceled':
+                            title = __language__(30030) + " - "
+                        title = title + __language__(30004) + ': ' + events['metadata']['name']
+                        eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata'][
+                            'description_regular']
+
+                        li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
+                        li.setArt({'icon': base_image_url + events['metadata']['images']['editorial']})
+                        li.setProperty('icon',
+                                       base_image_url + events['metadata']['images']['editorial'])
+                        li.setInfo('video', {'plot': prettydate(scheduled_start)})
+                        li.setProperty('IsPlayable', 'true')
+                        li.setInfo('video', {})
+                        url = build_url({'mode': 'event', 'event': str(events['target']) + '/' + str(
+                            events['metadata']['active_video_id']), 'live': True})
+
+                        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+
+                    else:
+                        if onlyLiveYesNo == '0':
+                            title = ''
+                            if events['metadata']['state'] == 'canceled':
+                                title = __language__(30030) + " - "
+                            title = title + str(prettytime(scheduled_start)) + " Uhr: " + events['metadata']['name']
+                            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
+                            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
+                            li.setArt({'icon': base_image_url + events['metadata']['images']['editorial']})
+                            li.setInfo('video', {'plot': prettydate(scheduled_start)})
+                            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+
+def getEPG():
+    #onlyLiveYesNo
+    #0: alles
+    #1: nur live
     bereitsangelegtnurLive = False
     bereitsangelegtnurLiveInfo = False
     schedule = json.loads(urlopen(schedule_url))
+
     for datas in schedule['data']['data']:
-        url = ""
-        for slots in datas['slots']:
-            scheduled_start = datetime.utcfromtimestamp(int(slots['slot_time']['utc_timestamp']))
-            for events in slots['events']:
-                if not events['metadata']['state'] == 'post':
-                    if not events['type'] == 'fcbEvent' or events['metadata']['name'][:4] == 'LIVE':
-                        scheduled_start = datetime.utcfromtimestamp(
-                            int(events['metadata']['scheduled_start']['utc_timestamp']))
-                        if not scheduled_start_Vorgaenger == prettydate(scheduled_start, False):
-                            if not bereitsangelegtnurLiveInfo:
-                                li = xbmcgui.ListItem(
-                                    "Hinweis: Falls ein Livestream nicht startet bitte via der Ligaauswahl auf der Startseite starten!")
-                                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
-                                                            isFolder=True)
-                                li = xbmcgui.ListItem(
-                                    "Hinweis: Falls der Stream kein Livebild zeigt: Livestream vorspulen!")
-                                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
-                                                            isFolder=True)
-                                bereitsangelegtnurLiveInfo = True
-
-                            if (args['onlyLiveYesNo'][0] == '1' and not bereitsangelegtnurLive) or args['onlyLiveYesNo'][0] == '0':
-                                li = xbmcgui.ListItem("[COLOR gold]" + prettydate(scheduled_start, False) + "[/COLOR]")
-                                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
-                                                                isFolder=True)
-                                scheduled_start_Vorgaenger = prettydate(scheduled_start, False)
-                                bereitsangelegtnurLive = True
-
-                        url = ""
-                        eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata']['description_regular']
-
-                        if events['metadata']['state'] == 'live' or slots['is_live']:
-                            title = ''
-                            if events['metadata']['state'] == 'canceled':
-                                title = __language__(30030)+" - "
-                            title = title + __language__(30004) + ': ' + events['metadata']['name']
-                            eventinfo = events['metadata']['description_bold'] + ' - ' + events['metadata'][
-                                'description_regular']
-
-                            li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
-                            li.setArt({'icon': base_image_url + events['metadata']['images']['editorial']})
-                            li.setProperty('icon',
-                                           base_image_url + events['metadata']['images']['editorial'])
-                            li.setInfo('video', {'plot': prettydate(scheduled_start)})
-                            li.setProperty('IsPlayable', 'true')
-                            li.setInfo('video', {})
-                            url = build_url({'mode': 'event', 'event': str(events['target'])+'/'+str(events['metadata']['active_video_id']), 'live': True})
-
-                            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
-
-                        else:
-                            if args['onlyLiveYesNo'][0] == '0':
-                                title = ''
-                                if events['metadata']['state'] == 'canceled':
-                                    title = __language__(30030)+" - "
-                                title = title + str(prettytime(scheduled_start))+" Uhr: "+events['metadata']['name']
-                                li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
-                                li = xbmcgui.ListItem('[B]' + title + '[/B] (' + eventinfo + ')')
-                                li.setArt({'icon': base_image_url + events['metadata']['images']['editorial']})
-                                li.setInfo('video', {'plot': prettydate(scheduled_start)})
-                                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
-
+        createEPG(datas, args['onlyLiveYesNo'][0], bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, False)
+        bereitsangelegtnurLive = True
+        bereitsangelegtnurLiveInfo = True
 
     xbmcplugin.endOfDirectory(_addon_handler)
 
+def getstandings():
+    xbmcgui.Dialog().ok(_addon_name, 'Tabellenfunktion wird noch nicht unterstützt')
+    xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
+
+def getschedule():
+    getprogram()
+
+def getprogram():
+    program = json.loads(urlopen(args['eventLane']))
+    bereitsangelegtnurLive = False
+    bereitsangelegtnurLiveInfo = False
+    if program['data']['metadata']['parent_title'].lower() == 'fc bayern.tv live':
+        for datas in program['data']['content'][0]['group_elements'][0]['data']:
+            createEPG(datas, '0', bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, True)
+            bereitsangelegtnurLive = True
+            bereitsangelegtnurLiveInfo = True
+
+        xbmcplugin.endOfDirectory(_addon_handler)
+    else:
+        for datas in program['data']['epg']['elements']:
+            createEPG(datas, '0', bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, False)
+            bereitsangelegtnurLive = True
+            bereitsangelegtnurLiveInfo = True
+
+        xbmcplugin.endOfDirectory(_addon_handler)
+
+
 def getpage():
     jsonResult = json.loads(urlopen(args['page']))
+
+    title = "[B][COLOR gold]" + jsonResult['data']['metadata']['title'] + ":[/COLOR][/B]"
+    url = ''
+    li = xbmcgui.ListItem(title)
+    li.setArt({'icon': jsonResult['data']['metadata']['web']['image']})
+    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+    #programm
+    for header in jsonResult['data']['navigation']['header']:
+        title = "[B]" + header['title'] + "[/B]"
+        url = build_url({'mode': header['target_type'], 'eventLane': header['target']})
+
+        li = xbmcgui.ListItem(title)
+        #li.setArt({'icon': jsonResult['data']['metadata']['web']['image']})
+        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+    title = "--------------------------------------------------------"
+    url = ''
+    li = xbmcgui.ListItem(title)
+    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
     count = 0
     for content in jsonResult['data']['content']:
@@ -526,17 +586,6 @@ def getvideo2(videoid, isPay):
 ##############
 # main routine
 ##############
-
-# urllib ssl fix
-import ssl
-from functools import wraps
-def sslwrap(func):
-    @wraps(func)
-    def bar(*args, **kw):
-        kw['ssl_version'] = ssl.PROTOCOL_TLSv1
-        return func(*args, **kw)
-    return bar
-ssl.wrap_socket = sslwrap(ssl.wrap_socket)
 
 if api_version == 0:
     api_version = 0
