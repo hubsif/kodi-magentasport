@@ -187,12 +187,10 @@ def doppelterBodenFCBayernTVlive\
                     url = build_url({'mode': header['target_type'], 'eventLane': header['target']})
                     jsonFCBayern = json.loads(urlopen(header['target']))
                     for slots in jsonFCBayern['data']['content'][0]['group_elements'][0]['data'][0]['slots']:
-                        xbmc.log(str(slots))
                         if slots['is_live']:
-                            scheduled_end = datetime.utcfromtimestamp(
-                                int(slots['slot_time']['utc_timestamp']))
                             if erstesEvent == False:
-
+                                scheduled_end = datetime.utcfromtimestamp(
+                                    int(slots['events'][0]['metadata']['scheduled_end']['utc_timestamp']))
                                 ausgabe = slots['events'][0]['metadata']['title']
                                 li = xbmcgui.ListItem('[B]FC Bayern.tv live:[/B] ' + ausgabe + ' (bis ' + str(
                                     prettytime(scheduled_end)) + ' Uhr) [B](24/7-Programm)[/B]')
@@ -201,10 +199,6 @@ def doppelterBodenFCBayernTVlive\
                                                             isFolder=True)
                                 erstesEvent = True
                                 break
-
-
-
-
 
 # plugin call modes
 def getMain():
