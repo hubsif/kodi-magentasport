@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.magentasport" name="Magenta Sport" version="2.1.1" provider-name="hubsif">
+<addon id="plugin.video.magentasport" name="Magenta Sport" version="2.1.2~beta" provider-name="hubsif">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
     </requires>

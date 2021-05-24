@@ -42,7 +42,7 @@ oauth_url = "https://accounts.login.idm.telekom.com/oauth2/tokens"
 jwt_url = "https://www.magentasport.de/service/auth/app/login/jwt"
 heartbeat_url = "https://www.magentasport.de/service/heartbeat"
 stream_url = "https://www.magentasport.de/service/player/streamAccess"
-main_page = "/navigation"
+main_page = "/page/1"
 
 ###########
 # functions
@@ -101,23 +101,35 @@ def getMain():
     jsonResult = json.loads(response)
 
     # get currently running games
-    response = urllib.request.urlopen(base_url + jsonResult['data']['main']['target']).read()
-    jsonLive = json.loads(response)
-    for content in jsonLive['data']['content']:
-        if content['title'] == 'Live':
-            for group_element in content['group_elements']:
-                if group_element['type'] == "eventLane":
-                    liveevent = False
-                    for data in group_element['data']:
-                        if data['metadata']['state'] == 'live':
-                            liveevent = True
-                    if liveevent:
-                        url = build_url({'mode': group_element['type'], group_element['type']: group_element['data_url'], 'onlylive': True})
-                        li = xbmcgui.ListItem('[B]' + __language__(30004) + '[/B]')
-                        li.setArt({'fanart': jsonLive['data']['metadata']['web']['image']})
-                        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+    for content in jsonResult['data']['epg']['elements']:
+        for slot in content['slots']:
+            if slot['is_live'] == True:
+                for event in slot['events']:
+                    if event['metadata']['state'] == 'live':
+                        scheduled_start = datetime.utcfromtimestamp(int(event['metadata']['scheduled_start']['utc_timestamp']))
+                        title = __language__(30003)
+                        if event['metadata']['title']:
+                            title = 'LIVE: ' + event['metadata']['title']
+                        else:
+                            if event['type'] in ['teamEvent', 'skyTeamEvent'] and 'details' in event['metadata'] and 'home' in event['metadata']['details']:
+                                title = 'LIVE: ' + event['metadata']['details']['home']['name_full'] + ' - ' + event['metadata']['details']['away']['name_full']
+                            elif event['metadata']['description_bold']:
+                                title = 'LIVE: ' + event['metadata']['description_bold']
+                        eventinfo = ""
+                        if event['metadata']['description_regular']: eventinfo += event['metadata']['description_regular']
+                        fulltitle = '[B]' + title + '[/B]'
+                        if eventinfo: fulltitle += ' (' + eventinfo + ')'
+                        li = xbmcgui.ListItem(fulltitle)
+                        li.setArt({'icon': base_image_url + event['metadata']['images']['editorial']})
+                        li.setInfo('video', {'plot': prettydate(scheduled_start)})
+                        li.setProperty('fanart_image', base_image_url + event['metadata']['images']['editorial'])
 
-    for content in jsonResult['data']['league_filter']:
+                        li.setProperty('IsPlayable', 'true')
+                        li.setInfo('video', {})
+                        url = build_url({'mode': 'event', 'event': event['target'], 'live': True})
+                        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+
+    for content in jsonResult['data']['navigation']['league_filter']:
         url = build_url({'mode': content['target_type'], content['target_type']: content['target']})
         li = xbmcgui.ListItem(content['title'])
         li.setArt({'icon': base_image_url + content['logo'], 'fanart': base_image_url + content['logo']})
