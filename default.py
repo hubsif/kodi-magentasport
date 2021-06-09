@@ -41,7 +41,7 @@ base_image_url = "https://www.magentasport.de"
 oauth_url = "https://accounts.login.idm.telekom.com/oauth2/tokens"
 jwt_url = "https://www.magentasport.de/service/auth/app/login/jwt"
 heartbeat_url = "https://www.magentasport.de/service/heartbeat"
-stream_url = "https://www.magentasport.de/service/player/streamAccess"
+stream_url = "https://www.magentasport.de/service/player/v2/streamAccess"
 main_page = "/page/1"
 
 ###########
