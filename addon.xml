@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.magentasport" name="Magenta Sport" version="2.0.1~beta" provider-name="hubsif">
+<addon id="plugin.video.magentasport" name="Magenta Sport" version="2.0.1~beta2" provider-name="hubsif">
     <requires>
         <import addon="xbmc.python" version="2.5.0"/>
     </requires>
@@ -18,6 +18,11 @@
             <fanart>resources/fanart.jpg</fanart>
         </assets>
         <news>
+            v2.0.1-beta2 (2021-06-12)
+            - Switch to new streamAccess URL
+            - Remove heartbeat call
+            v2.0.1-beta1 (2021-05-24)
+            - get live events from epg
             v2.0.0 (2019-01-16)
             - update and rename to Magentasport
             - use online sports category images
