@@ -207,11 +207,12 @@ def doppelterBodenFCBayernTVlive\
                                 break
 
                     #kein Event gefunden
-                    ausgabe = ''
-                    li = xbmcgui.ListItem('[B]FC Bayern.tv live:[/B] keine Programminfo verfügbar - starte Livestream hier [B](24/7-Programm)[/B]')
-                    li.setArt({'icon': base_image_url + slots['events'][0]['metadata']['images']['editorial']})
-                    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
-                                                isFolder=True)
+                    if erstesEvent == False:
+                        ausgabe = ''
+                        li = xbmcgui.ListItem('[B]FC Bayern.tv live:[/B] keine Programminfo verfügbar - starte Livestream hier [B](24/7-Programm)[/B]')
+                        li.setArt({'icon': base_image_url + slots['events'][0]['metadata']['images']['editorial']})
+                        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
+                                                    isFolder=True)
 # plugin call modes
 def getMain():
 
