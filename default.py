@@ -40,7 +40,6 @@ base_url = "https://www.magentasport.de/api/v2"
 base_image_url = "https://www.magentasport.de"
 oauth_url = "https://accounts.login.idm.telekom.com/oauth2/tokens"
 jwt_url = "https://www.magentasport.de/service/auth/app/login/jwt"
-heartbeat_url = "https://www.magentasport.de/service/heartbeat"
 stream_url = "https://www.magentasport.de/service/player/v2/streamAccess"
 main_page = "/page/1"
 
@@ -74,25 +73,6 @@ def get_jwt(username, password):
         jsonResult = json.loads(response)
         if 'status' in jsonResult and jsonResult['status'] == "success" and 'data' in jsonResult and 'token' in jsonResult['data']:
             return jsonResult['data']['token']
-
-def auth_media(jwt, videoid):
-    try:
-        response = urllib.request.urlopen(urllib.request.Request(heartbeat_url + '/initialize', json.dumps({"media": videoid}).encode(), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
-    except urllib.error.HTTPError as error:
-        response = error.read()
-
-    try:
-        urllib.request.urlopen(urllib.request.Request(heartbeat_url + '/destroy', "".encode(), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
-    except urllib.error.HTTPError as e:
-        pass
-
-    jsonResult = json.loads(response)
-    if 'status' in jsonResult and jsonResult['status'] == "success":
-        return "success"
-    elif 'status' in jsonResult and jsonResult['status'] == "error":
-        if 'message' in jsonResult:
-            return jsonResult['message']
-    return __language__(30006)
 
 # plugin call modes
 
@@ -264,16 +244,6 @@ def getvideo():
                     msg += __language__(30011)
                     msg += '\n"' + response['error_description'] + '"'
                 xbmcgui.Dialog().ok(_addon_name, msg)
-                xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
-                return
-            if jwt:
-                auth_response = auth_media(jwt, videoid)
-                if auth_response != "success":
-                    xbmcgui.Dialog().ok(_addon_name, auth_response)
-                    xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
-                    return
-            else:
-                xbmcgui.Dialog().ok(_addon_name, __language__(30005))
                 xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
                 return
 
