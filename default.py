@@ -55,7 +55,7 @@ base_image_url = "https://www.magentasport.de"
 oauth_url = "https://accounts.login.idm.telekom.com/oauth2/tokens"
 jwt_url = "https://www.magentasport.de/service/auth/app/login/jwt"
 heartbeat_url = "https://www.magentasport.de/service/heartbeat"
-stream_url = "https://www.magentasport.de/service/player/streamAccess"
+stream_url = "https://www.magentasport.de/service/player/v2/streamAccess"
 main_page = "/navigation"
 schedule_url = "/components/programm/18"
 #schedule_url = "/epg/28" # alt
@@ -108,10 +108,10 @@ def auth_media(jwt, videoid):
     except urllib.error.HTTPError as error:
         response = error.read()
 
-    #try:
-    #    urllib.request.urlopen(urllib.request.Request(heartbeat_url + '/destroy', "", {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
-    #except urllib.error.HTTPError as e:
-    #    pass
+    try:
+        urllib.request.urlopen(urllib.request.Request(heartbeat_url + '/destroy'.encode(), "", {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+    except urllib.error.HTTPError as e:
+        pass
 
     jsonResult = json.loads(response)
     if 'status' in jsonResult and jsonResult['status'] == "success":
@@ -124,7 +124,13 @@ def auth_media(jwt, videoid):
 def generate_hash256(text):
     return sha256(text.encode('utf-8')).hexdigest()
 
-def urlopen(urlEnd):
+def urlopen(urlEnd, *args):
+    eventTreeIDUebergabe = ''
+    for ar in args:
+        if eventTreeIDUebergabe == '':
+            eventTreeIDUebergabe = ar + '&'
+            break
+
     response = ''
     if api_version == 3:
         utc = int(
@@ -132,9 +138,9 @@ def urlopen(urlEnd):
                                                                                                                  1,
                                                                                                                  1)).total_seconds())
         accesstoken = generate_hash256('{0}{1}{2}'.format(api_salt, utc, base_api + urlEnd))
-        xbmc.log('Token erzeugt für '+str(urlEnd))
-        response = urllib.request.urlopen(base_url + base_api + urlEnd + '?token=' + accesstoken).read()
-        xbmc.log('hier000 ' + str(base_url + base_api + urlEnd + '?token=' + accesstoken))
+        xbmc.log('Token erzeugt für '+str(base_api + urlEnd))
+        xbmc.log('hier000 ' + str(base_url + base_api + urlEnd + '?' + eventTreeIDUebergabe + 'token=' + accesstoken))
+        response = urllib.request.urlopen(base_url + base_api + urlEnd + '?' + eventTreeIDUebergabe + 'token=' + accesstoken).read()
     else:
         response = urllib.request.urlopen(base_url + base_api + urlEnd).read()
         xbmc.log('hier000 ' + str(base_url + base_api + urlEnd))
@@ -184,8 +190,8 @@ def doppelterBodenFCBayernTVlive\
             jsonFCBayern = json.loads(urlopen(content['target']))
             for header in jsonFCBayern['data']['navigation']['header']:
                 if header['title'].lower() == 'programm':
-                    url = build_url({'mode': header['target_type'], 'eventLane': header['target']})
-                    jsonFCBayern = json.loads(urlopen(header['target']))
+                    url = build_url({'mode': header['target_type'], 'eventLane': header['target'], 'event_tree_id': str(content['event_tree_id']), 'title': content['title']})
+                    jsonFCBayern = json.loads(urlopen(header['target'], 'eventTreeId='+str(content['event_tree_id'])))
                     for slots in jsonFCBayern['data']['content'][0]['group_elements'][0]['data'][0]['slots']:
                         if slots['is_live']:
                             if erstesEvent == False:
@@ -200,6 +206,12 @@ def doppelterBodenFCBayernTVlive\
                                 erstesEvent = True
                                 break
 
+                    #kein Event gefunden
+                    ausgabe = ''
+                    li = xbmcgui.ListItem('[B]FC Bayern.tv live:[/B] keine Programminfo verfügbar - starte Livestream hier [B](24/7-Programm)[/B]')
+                    li.setArt({'icon': base_image_url + slots['events'][0]['metadata']['images']['editorial']})
+                    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
+                                                isFolder=True)
 # plugin call modes
 def getMain():
 
@@ -269,7 +281,7 @@ def getMain():
     xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
     for content in jsonResult['data']['league_filter']:
-        url = build_url({'mode': content['target_type'], content['target_type']: content['target']})
+        url = build_url({'mode': content['target_type'], content['target_type']: content['target'], 'event_tree_id': content['event_tree_id']})
         li = xbmcgui.ListItem(content['title'])
         li.setArt({'icon': base_image_url + content['logo']})
         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
@@ -369,31 +381,66 @@ def getstandings():
     xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
 
 def getschedule():
-    getprogram()
+    title = "[B][COLOR gold]" + args['title'] + " Spielplan:[/COLOR][/B]"
+    url = ''
+    li = xbmcgui.ListItem(title)
+    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
-def getprogram():
-    program = json.loads(urlopen(args['eventLane']))
+    if args['event_tree_id'] == '':
+        eventTreeID_Uebergabe = ''
+    else:
+        eventTreeID_Uebergabe = 'eventTreeId=' + args['event_tree_id']
+    program = json.loads(urlopen(args['eventLane'], eventTreeID_Uebergabe))
     bereitsangelegtnurLive = False
     bereitsangelegtnurLiveInfo = False
-    if program['data']['metadata']['parent_title'].lower() == 'fc bayern.tv live':
-        for datas in program['data']['content'][0]['group_elements'][0]['data']:
-            createEPG(datas, '0', bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, True)
-            bereitsangelegtnurLive = True
-            bereitsangelegtnurLiveInfo = True
+    xbmc.log('adgadsg' + str(args['eventLane']))
 
-        xbmcplugin.endOfDirectory(_addon_handler)
+    for datas in program['data']['epg']['elements']:
+        createEPG(datas, '0', bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, False)
+        bereitsangelegtnurLive = True
+        bereitsangelegtnurLiveInfo = True
+
+    xbmcplugin.endOfDirectory(_addon_handler)
+
+def getprogram():
+    title = "[B][COLOR gold]" + args['title'] + " Programm:[/COLOR][/B]"
+    url = ''
+    li = xbmcgui.ListItem(title)
+    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+
+    if args['title'].lower() == 'fc bayern.tv live':
+        #Bayern TV - doppelter Boden:
+        title = 'Start Livestream (24/7-Programm)'
+        li = xbmcgui.ListItem('[B]' + title + '[/B]')
+        li.setProperty('IsPlayable', 'true')
+        li.setInfo('video', {})
+        url = build_url({'mode': 'event', 'event': '/event/5021', 'live': True})
+
+        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+
+        title = "--------------------------------------------------------"
+        url = ''
+        li = xbmcgui.ListItem(title)
+        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+
+    if args['event_tree_id'] == '':
+        eventTreeID_Uebergabe = ''
     else:
-        for datas in program['data']['epg']['elements']:
-            createEPG(datas, '0', bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, False)
-            bereitsangelegtnurLive = True
-            bereitsangelegtnurLiveInfo = True
+        eventTreeID_Uebergabe = 'eventTreeId=' + args['event_tree_id']
+    program = json.loads(urlopen(args['eventLane'], eventTreeID_Uebergabe))
+    bereitsangelegtnurLive = False
+    bereitsangelegtnurLiveInfo = False
+    for datas in program['data']['content'][0]['group_elements'][0]['data']:
+        xbmc.log(str(datas))
+        createEPG(datas, '0', bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, True)
+        bereitsangelegtnurLive = True
+        bereitsangelegtnurLiveInfo = True
 
-        xbmcplugin.endOfDirectory(_addon_handler)
+    xbmcplugin.endOfDirectory(_addon_handler)
 
 
 def getpage():
     jsonResult = json.loads(urlopen(args['page']))
-
     title = "[B][COLOR gold]" + jsonResult['data']['metadata']['title'] + ":[/COLOR][/B]"
     url = ''
     li = xbmcgui.ListItem(title)
@@ -402,7 +449,7 @@ def getpage():
     #programm
     for header in jsonResult['data']['navigation']['header']:
         title = "[B]" + header['title'] + "[/B]"
-        url = build_url({'mode': header['target_type'], 'eventLane': header['target']})
+        url = build_url({'mode': header['target_type'], 'eventLane': header['target'], 'event_tree_id': args['event_tree_id'], 'title': jsonResult['data']['metadata']['title']})
 
         li = xbmcgui.ListItem(title)
         #li.setArt({'icon': jsonResult['data']['metadata']['web']['image']})
@@ -546,16 +593,6 @@ def getvideo2(videoid, isPay):
                     msg += __language__(30011)
                     msg += '\n"' + response['error_description'] + '"'
                 xbmcgui.Dialog().ok(_addon_name, msg)
-                xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
-                return
-            if jwt:
-                auth_response = auth_media(jwt, videoid)
-                if auth_response != "success":
-                    xbmcgui.Dialog().ok(_addon_name, auth_response)
-                    xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
-                    return
-            else:
-                xbmcgui.Dialog().ok(_addon_name, __language__(30005))
                 xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
                 return
 

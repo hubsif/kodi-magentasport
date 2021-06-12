@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.telekomsport" name="Magenta Sport" version="2.2.0+matrix.3" provider-name="hubsif">
+<addon id="plugin.video.telekomsport" name="Magenta Sport" version="2.2.1+matrix.1" provider-name="hubsif">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
     </requires>
@@ -18,6 +18,10 @@
             <fanart>resources/fanart.jpg</fanart>
         </assets>
         <news>
+			v2.2.1+matrix.1 (2021-06-12)
+			- fixed bayern tv live and other thinks after api-changes
+			v2.2.1+matrix.0 (2021-06-11)
+			- fixed streams (without bayern tv live)
 			v2.2.0+matrix.3 (2021-05-22)
 			- change starttime to endtime in startpage at bayern tv live
 			v2.2.0+matrix.2 (2021-05-20)
