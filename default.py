@@ -119,17 +119,17 @@ def urlopen(urlEnd, *args):
                                                                                                                  1)).total_seconds())
         accesstoken = generate_hash256('{0}{1}{2}'.format(api_salt, utc, base_api + urlEnd))
         xbmc.log('Token erzeugt für '+str(base_api + urlEnd))
-        xbmc.log('hier000 ' + str(base_url + base_api + urlEnd + '?' + eventTreeIDUebergabe + 'token=' + accesstoken))
+        #xbmc.log('hier000 ' + str(base_url + base_api + urlEnd + '?' + eventTreeIDUebergabe + 'token=' + accesstoken))
         response = urllib.request.urlopen(base_url + base_api + urlEnd + '?' + eventTreeIDUebergabe + 'token=' + accesstoken).read()
     else:
         response = urllib.request.urlopen(base_url + base_api + urlEnd).read()
-        xbmc.log('hier000 ' + str(base_url + base_api + urlEnd))
+        #xbmc.log('hier000 ' + str(base_url + base_api + urlEnd))
 
-    xbmc.log('hier111 ' + str(response))
+    #xbmc.log('hier111 ' + str(response))
     return response
 
 def doppelterBodenLiveEvent():
-    xbmc.log('Ich gehe hier durch: doppelterBodenLiveEvent')
+    #xbmc.log('Ich gehe hier durch: doppelterBodenLiveEvent')
     counterLive = 0
     liveevent = False
     ausgabeCounterLive1 = ''
@@ -163,7 +163,7 @@ def doppelterBodenLiveEvent():
 
 def doppelterBodenFCBayernTVlive\
                 (jsonResult):
-    xbmc.log('Ich gehe hier durch: doppelterBodenFCBayernTVlive')
+    #xbmc.log('Ich gehe hier durch: doppelterBodenFCBayernTVlive')
     erstesEvent = False
     for content in jsonResult['data']['league_filter']:
         if content['title'].lower() == 'fc bayern.tv live':
@@ -374,7 +374,7 @@ def getschedule():
     program = json.loads(urlopen(args['eventLane'], eventTreeID_Uebergabe))
     bereitsangelegtnurLive = False
     bereitsangelegtnurLiveInfo = False
-    xbmc.log('adgadsg' + str(args['eventLane']))
+    #xbmc.log('adgadsg' + str(args['eventLane']))
 
     for datas in program['data']['epg']['elements']:
         createEPG(datas, '0', bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, False)
@@ -412,7 +412,7 @@ def getprogram():
     bereitsangelegtnurLive = False
     bereitsangelegtnurLiveInfo = False
     for datas in program['data']['content'][0]['group_elements'][0]['data']:
-        xbmc.log(str(datas))
+        #xbmc.log(str(datas))
         createEPG(datas, '0', bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, True)
         bereitsangelegtnurLive = True
         bereitsangelegtnurLiveInfo = True
@@ -514,7 +514,7 @@ def geteventLane():
                 li.setProperty('IsPlayable', 'true')
                 li.setInfo('video', {})
                 url = build_url({'mode': 'event', 'event': event['target'], 'live': True})
-                xbmc.log('streamlink: '+str( event['target']))
+                xbmc.log('streamlink: '+str(event['target']))
                 xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
             elif not ('onlylive' in args and args['onlylive']):
                 url = build_url({'mode': 'event', 'event': event['target']})
@@ -578,21 +578,84 @@ def getvideo2(videoid, isPay):
                 return
 
     jwt = jwt or 'empty'
-
-    response = urllib.request.urlopen(urllib.request.Request(stream_url, json.dumps({ 'videoId': videoid}).encode(), {'xauthorization': jwt, 'Content-Type': 'application/json'})).read()
+    response = urllib.request.urlopen(urllib.request.Request(stream_url, json.dumps({'videoId': videoid}).encode(),
+                                                             {'xauthorization': jwt,
+                                                              'Content-Type': 'application/json'})).read()
     jsonResult = json.loads(response)
-    url = 'https:' + jsonResult['data']['stream-access'][0]
 
-    response = urllib.request.urlopen(url).read()
+    streamAuswahlListe = []
+    streamURLListe = []
+    hlsDashListe = []
+    playlisturl = ''
+    drmToken = ''
+    drmPixel = ''
+    try:
+        drmToken = jsonResult['data']['drmToken']
+        drmPixel = jsonResult['data']['drmPixel']
+    except:
+        xbmc.log('No drmToken')
+    try:
+        streamURLListe.append(jsonResult['data']['stream']['dash'])
+        streamAuswahlListe.append('Hauptstream (dash)')
+        hlsDashListe.append('dash')
+    except:
+        xbmc.log("Hauptstream dash not available")
 
-    xmlroot = ET.ElementTree(ET.fromstring(response))
-    playlisturl = xmlroot.find('token').get('url')
-    auth = xmlroot.find('token').get('auth')
+    try:
+        streamURLListe.append(jsonResult['data']['stream']['hls'])
+        streamAuswahlListe.append('Hauptstream (hls)')
+        hlsDashListe.append('hls')
+    except:
+        xbmc.log("Hauptstream hls not available")
 
-    listitem = xbmcgui.ListItem(path=playlisturl + "?hdnea=" + auth)
-    listitem.setProperty('inputstream', 'inputstream.adaptive')
-    listitem.setProperty('inputstream.adaptive.manifest_type', 'hls')
-    xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
+    try:
+        streamURLListe.append(jsonResult['data']['backup']['dash'])
+        streamAuswahlListe.append('Backupstream (dash)')
+        hlsDashListe.append('dash')
+    except:
+        xbmc.log("Backupstream dash not available")
+
+    try:
+        streamURLListe.append(jsonResult['data']['backup']['hls'])
+        streamAuswahlListe.append('Backupstream (hls)')
+        hlsDashListe.append('hls')
+    except:
+        xbmc.log("Backupstream hls not available")
+
+    try:
+        url = 'https:' + jsonResult['data']['stream-access'][0]
+        response = urllib.request.urlopen(url).read()
+        xmlroot = ET.ElementTree(ET.fromstring(response))
+        playlisturl = xmlroot.find('token').get('url')
+        auth = xmlroot.find('token').get('auth')
+        streamURLListe.append(playlisturl + "?hdnea=" + auth)
+        streamAuswahlListe.append('XML-Stream (hls)')
+        hlsDashListe.append('hls')
+    except:
+        xbmc.log("XML-Stream not available")
+
+    streamURLListe.append('leer')
+    streamAuswahlListe.append('Hinweis: Ggf. Stream vorspulen!!!')
+    hlsDashListe.append('leer')
+    Dialog = xbmcgui.Dialog()
+
+    auswahl = Dialog.select("Stream auswählen", streamAuswahlListe)
+    if auswahl > -1:
+        if hlsDashListe[auswahl] != 'leer':
+            xbmc.log("Stream Nr " + str(auswahl) + " selected: "+streamAuswahlListe[auswahl])
+            xbmc.log("Stream-URL: "+streamURLListe[auswahl])
+            #xbmc.log("DRM-Token: "+drmToken)
+            listitem = xbmcgui.ListItem(path=streamURLListe[auswahl])
+            #listitem.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
+            #listitem.setProperty('inputstream.adaptive.license_key', drmToken)
+            #listitem.setProperty('inputstream.adaptive.stream_headers', 'User-Agent=the_user_agent&Cookie=the_cookies')
+            # +"|Content-Type=&User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0
+            listitem.setProperty('inputstream', 'inputstream.adaptive')
+            if hlsDashListe[auswahl] == 'hls':
+                listitem.setProperty('inputstream.adaptive.manifest_type', 'hls')
+            else:
+                listitem.setProperty('inputstream.adaptive.manifest_type', 'mpd')
+            xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
 
 
 ##############
