@@ -594,6 +594,19 @@ def getvideo2(videoid, isPay):
         drmPixel = jsonResult['data']['drmPixel']
     except:
         xbmc.log('No drmToken')
+
+    try:
+        url = 'https:' + jsonResult['data']['stream-access'][0]
+        response = urllib.request.urlopen(url).read()
+        xmlroot = ET.ElementTree(ET.fromstring(response))
+        playlisturl = xmlroot.find('token').get('url')
+        auth = xmlroot.find('token').get('auth')
+        streamURLListe.append(playlisturl + "?hdnea=" + auth)
+        streamAuswahlListe.append('XML-Stream (hls)')
+        hlsDashListe.append('hls')
+    except:
+        xbmc.log("XML-Stream not available")
+
     try:
         streamURLListe.append(jsonResult['data']['stream']['dash'])
         streamAuswahlListe.append('Hauptstream (dash)')
@@ -622,18 +635,6 @@ def getvideo2(videoid, isPay):
     except:
         xbmc.log("Backupstream hls not available")
 
-    try:
-        url = 'https:' + jsonResult['data']['stream-access'][0]
-        response = urllib.request.urlopen(url).read()
-        xmlroot = ET.ElementTree(ET.fromstring(response))
-        playlisturl = xmlroot.find('token').get('url')
-        auth = xmlroot.find('token').get('auth')
-        streamURLListe.append(playlisturl + "?hdnea=" + auth)
-        streamAuswahlListe.append('XML-Stream (hls)')
-        hlsDashListe.append('hls')
-    except:
-        xbmc.log("XML-Stream not available")
-
     streamURLListe.append('leer')
     streamAuswahlListe.append('Hinweis: Ggf. Stream vorspulen!!!')
     hlsDashListe.append('leer')
@@ -646,8 +647,9 @@ def getvideo2(videoid, isPay):
             xbmc.log("Stream-URL: "+streamURLListe[auswahl])
             #xbmc.log("DRM-Token: "+drmToken)
             listitem = xbmcgui.ListItem(path=streamURLListe[auswahl])
-            #listitem.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
-            #listitem.setProperty('inputstream.adaptive.license_key', drmToken)
+            if auswahl != 0:
+                listitem.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
+                listitem.setProperty('inputstream.adaptive.license_key', drmToken)
             #listitem.setProperty('inputstream.adaptive.stream_headers', 'User-Agent=the_user_agent&Cookie=the_cookies')
             # +"|Content-Type=&User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0
             listitem.setProperty('inputstream', 'inputstream.adaptive')
