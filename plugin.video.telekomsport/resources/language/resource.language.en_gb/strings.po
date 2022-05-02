@@ -1,0 +1,66 @@
+# XBMC Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC-Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en\n"
+"Plural-Forms: nplurals=1; plural=0\n" 
+
+msgctxt "#30001"
+msgid "Stream starts at"
+msgstr ""
+
+msgctxt "#30002"
+msgid "Error loading video or no video available."
+msgstr ""
+
+msgctxt "#30003"
+msgid "Missing title"
+msgstr ""
+
+msgctxt "#30004"
+msgid "CURRENTLY RUNNING"
+msgstr ""
+
+msgctxt "#30005"
+msgid "To watch this video you need a subscription and login credentials. The current credentials produced an authentication error. Please check username and password in addon settings."
+msgstr ""
+
+msgctxt "#30006"
+msgid "Error verifying subscription."
+msgstr ""
+
+msgctxt "#30007"
+msgid "Login data missing. Please define username and password first."
+msgstr ""
+
+msgctxt "#30008"
+msgid "General"
+msgstr ""
+
+msgctxt "#30009"
+msgid "Username"
+msgstr ""
+
+msgctxt "#30010"
+msgid "Password"
+msgstr ""
+
+msgctxt "#30011"
+msgid "Error response from server:"
+msgstr ""
+
+msgctxt "#30020"
+msgid "Api-version"
+msgstr "Api-version"
+
+msgctxt "#30030"
+msgid "Canceled"
+msgstr "Canceled"
+
+msgctxt "#30040"
+msgid "Login-Method"
+msgstr "Login-Method"
