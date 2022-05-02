@@ -33,6 +33,9 @@ from random import randint
 from hashlib import sha256
 from re import search
 import importlib
+import hashlib
+import base64
+
 
 importlib.reload(sys)
 #sys.setdefaultencoding('utf8')
@@ -52,7 +55,10 @@ xbmcplugin.setContent(_addon_handler, 'episodes')
 base_url = "https://www.magentasport.de"
 base_api = "/api/v" # + str(api_version) # wird unten angefügt
 base_image_url = "https://www.magentasport.de"
-oauth_url = "https://accounts.login.idm.telekom.com/oauth2/tokens"
+oauth_url_ios = "https://accounts.login.idm.telekom.com/oauth2/auth"
+token_url_ios = "https://accounts.login.idm.telekom.com/oauth2/tokens"
+oauth_url = "https://www.magentasport.de/service/auth/web/login?headto=https://www.magentasport.de/home"
+oauth_factorx_url='https://accounts.login.idm.telekom.com/factorx'
 jwt_url = "https://www.magentasport.de/service/auth/app/login/jwt"
 stream_url = "https://www.magentasport.de/service/player/v2/streamAccess"
 main_page = "/navigation"
@@ -60,12 +66,44 @@ schedule_url = "/components/programm/18"
 #schedule_url = "/epg/28" # alt
 api_salt = '55!#r%Rn3%xn?U?PX*k'
 accesstoken = ''
+login_method = ''
 api_version = 0
+useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:81.0) Gecko/20100101 Firefox/81.0"
+cook = []
+ccc = 0
+code_verifier='vnwceqbocuiqeouinjsi249sm2la1o'.encode('utf-8')
+code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier).digest()).split('='.encode('utf-8'))[0]
 
 ###########
 # functions
 ###########
 
+class RedirectHandler(urllib.request.HTTPRedirectHandler):
+    max_repeats = 100
+    max_redirections = 1000
+
+    def http_error_302(self, req, fp, code, msg, headers):
+        global cook
+        global ccc
+        #print("Redirected", code)
+        #print(headers.get_all('Set-Cookie'))
+
+        if login_method == 'Web':
+            if cook == []:
+                cook=headers.get_all('Set-Cookie')
+            else:
+                req.add_header('Cookie', ';'.join(cook))
+                cook = []
+            return urllib.request.HTTPRedirectHandler.http_error_302(
+                self, req, fp, code, msg, headers)
+        else:
+            #print("Redirected", code)
+            location = headers.get_all('Location')[0]
+            #print(location)
+            pos = location.find('code=') + 5
+            ccc = location[pos:pos + 8]
+            #print(ccc)
+            return None
 # helper functions
 
 def build_url(query):
@@ -89,17 +127,156 @@ def utc_offset():
     ts = time.time()
     return (datetime.fromtimestamp(ts) - datetime.utcfromtimestamp(ts))
 
-def get_jwt(username, password):
-    data = { "claims": "{'id_token':{'urn:telekom.com:all':null}}", "client_id": "10LIVESAM30000004901TSMAPP00000000000000", "grant_type": "password", "scope": "tsm offline_access", "username": username, "password": password }
-    #xbmc.log("hieradf: "+str(urllib.request.Request(oauth_url, urllib.parse.urlencode(data), {'Content-Type': 'application/json'})).read())
-    response = urllib.request.urlopen(urllib.request.Request(oauth_url, urllib.parse.urlencode(data).encode(), {'Content-Type': 'application/json'})).read()
-    jsonResult = json.loads(response)
+def get_jwt(username, password, videoID):
+    if login_method == 'Web':
+        opener = urllib.request.build_opener(RedirectHandler()).open
+        req = urllib.request.Request(oauth_url)
+        req.add_header('User-Agent', useragent)
+        response = opener(req)
+        cookies = response.info().get_all('Set-Cookie')
+        html = str(response.read())
+        pos = 0
+        pos = html.find('name="xsrf')
+        xsrf_name = html[pos + 6:pos + 33]
+        pos = html.find('value=', pos)
+        xsrf_value = html[pos + 7:pos + 29]
+        pos = html.find('name="tid" value="')
+        tid = html[pos + 18:pos + 54]
 
-    if 'access_token' in jsonResult:
-        response = urllib.request.urlopen(urllib.request.Request(jwt_url, json.dumps({"token": jsonResult['access_token']}).encode(), {'Content-Type': 'application/json'})).read()
+        referer = response.geturl()
+
+        data = {xsrf_name: xsrf_value, 'tid': tid, 'x-show-cancel': 'false', 'bdata': '', 'pw_usr': username, 'pw_submit': '',
+                'hidden_pwd': ''}
+        post = urlparse.urlencode(data).encode('utf-8')
+        req = urllib.request.Request(oauth_factorx_url, post)
+        req.add_header('Cookie', ';'.join(cookies))
+        req.add_header('User-Agent', useragent)
+        response = urllib.request.urlopen(req)
+        cookies = [cookies[0]]
+        cookies.append(response.info().get_all('Set-Cookie')[4])
+
+        html = str(response.read())
+        pos = 0
+        pos = html.find('name="xsrf')
+        xsrf_name = html[pos + 6:pos + 33]
+        pos = html.find('value=', pos)
+        xsrf_value = html[pos + 7:pos + 29]
+        pos = html.find('name="tid" value="')
+        tid = html[pos + 18:pos + 54]
+
+        data = {xsrf_name: xsrf_value, 'tid': tid, 'bdata': '', 'hidden_usr': '', 'pw_submit': '',
+                'pw_pwd': password, 'persist_session_displayed': '1'}
+        post = urlparse.urlencode(data).encode('utf-8')
+        req = urllib.request.Request(oauth_factorx_url, post)
+
+        req.add_header('Cookie', ';'.join(cookies))
+        req.add_header('User-Agent', useragent)
+
+        response = opener(req)
+
+        req = urllib.request.Request(
+            stream_url + "?videoId=" + str(videoID) + "&label=2780_hls&cdn=telekom_cdn")
+        cook.pop(0)
+        req.add_header('Cookie', ';'.join(cook))
+        req.add_header('User-Agent', useragent)
+        post = urlparse.urlencode("").encode('utf-8')
+        response = urllib.request.urlopen(req, post)
+        jsonResult = json.loads(response.read())
+    else:
+        data = {'prompt': 'x-no-sso', 'nonce': 'Wc2-9smRvNKtoc_FnLg_glqa8Mgo6zsKrMa6gIPx8qQ', 'response_type': 'code',
+                'scope': 'openid', 'code_challenge': code_challenge,
+                'redirect_uri': 'sso.magentasport://web_login_callback',
+                'client_id': '10LIVESAM30000004901MAGENTASPORTIOS00000', 'state': 'dd32niwi30cmsnwkidhsns',
+                'code_challenge_method': 'S256'}
+        params = urlparse.urlencode(data)
+        req = urllib.request.Request(oauth_url_ios + '?' + params)
+        # req.add_header('Connection', 'keep-alive')
+        # req.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8')
+        # req.add_header('Accept-Language', 'de,en-US;q=0.7,en;q=0.3')
+        req.add_header('User-Agent', useragent)
+        response = urllib.request.urlopen(req)
+
+        cookies = response.info().get_all('Set-Cookie')
+        #print("cookies", cookies)
+        html = str(response.read())
+        pos = html.find('name="xsrf')
+        xsrf_name = html[pos + 6:pos + 33]
+        pos = html.find('value=', pos)
+        xsrf_value = html[pos + 7:pos + 29]
+        pos = html.find('name="tid" value="')
+        tid = html[pos + 18:pos + 54]
+
+        data = {xsrf_name: xsrf_value, 'tid': tid, 'x-show-cancel': 'true', 'bdata': '', 'pw_usr': username,
+                'pw_submit': '', 'hidden_pwd': ''}
+        post = urlparse.urlencode(data).encode('utf-8')
+        req = urllib.request.Request(oauth_factorx_url, post)
+        req.add_header('Cookie', ';'.join(cookies))
+        req.add_header('User-Agent', useragent)
+        response = urllib.request.urlopen(req)
+        cookies += response.info().get_all('Set-Cookie')
+
+        #print("User gesendet")
+        #print("\n\n")
+
+        html = str(response.read())
+        pos = html.find('name="xsrf')
+        xsrf_name = html[pos + 6:pos + 33]
+        pos = html.find('value=', pos)
+        xsrf_value = html[pos + 7:pos + 29]
+        pos = html.find('name="tid" value="')
+        tid = html[pos + 18:pos + 54]
+
+        data = {xsrf_name: xsrf_value, 'tid': tid, 'bdata': '', 'hidden_usr': '', 'pw_submit': '',
+                'pw_pwd': password}
+        post = urlparse.urlencode(data).encode('utf-8')
+        opener = urllib.request.build_opener(RedirectHandler()).open
+        req = urllib.request.Request(oauth_factorx_url, post)
+
+        req.add_header('Cookie', ';'.join(cookies))
+        req.add_header('User-Agent', useragent)
+
+        try:
+            response = opener(req)
+        except Exception:
+            pass
+
+        data = {'code': ccc, 'code_verifier': code_verifier, 'client_id': '10LIVESAM30000004901MAGENTASPORTIOS00000',
+                'grant_type': 'authorization_code', 'redirect_uri': 'sso.magentasport://web_login_callback'}
+        post = urlparse.urlencode(data).encode('utf-8')
+        # req = urllib.request.Request('https://accounts.login.idm.telekom.com/oauth2/tokens', post)
+        req = urllib.request.Request(token_url_ios, post)
+        req.add_header('User-Agent', useragent)
+
+        response = urllib.request.urlopen(req)
+        jsonresult = json.loads(response.read())
+        xbmc.log('agegdeigjiöl'+str(jsonresult))
+        data = {'refresh_token': jsonresult['refresh_token'], 'client_id': '10LIVESAM30000004901MAGENTASPORTIOS00000',
+                'grant_type': 'refresh_token', 'redirect_uri': 'sso.magentasport://web_login_callback', 'scope': 'tsm'}
+        post = urlparse.urlencode(data).encode('utf-8')
+        # req = urllib.request.Request('https://accounts.login.idm.telekom.com/oauth2/tokens', post)
+        req = urllib.request.Request(token_url_ios, post)
+        req.add_header('User-Agent', useragent)
+
+        response = urllib.request.urlopen(req)
+        jsonresult = json.loads(response.read())
+
+        data = {'token': jsonresult['access_token']}
+        post = urlparse.urlencode(data).encode('utf-8')
+        req = urllib.request.Request(jwt_url, post)
+        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+        req.add_header('User-Agent', useragent)
+        response = urllib.request.urlopen(req)
+        jsonresult = json.loads(response.read())
+        #print(str(jsonresult))
+
+        response = urllib.request.urlopen(urllib.request.Request(stream_url, json.dumps({'videoId': str(videoID)}).encode(),
+                                                                 {'xauthorization': jsonresult['data']['token'],
+                                                                  'Content-Type': 'application/json'},
+                                                                 {'label': '2780_hls'})).read()
         jsonResult = json.loads(response)
-        if 'status' in jsonResult and jsonResult['status'] == "success" and 'data' in jsonResult and 'token' in jsonResult['data']:
-            return jsonResult['data']['token']
+
+    xbmc.log('jsonResult'+str(jsonResult))
+    return jsonResult
 
 def generate_hash256(text):
     return sha256(text.encode('utf-8')).hexdigest()
@@ -557,7 +734,7 @@ def getvideo():
     getvideo2(args['videoid'], args['isPay'])
 
 def getvideo2(videoid, isPay):
-    jwt = None
+    jsonResult = None
     if isPay == 'True':
         if not _addon.getSetting('username'):
             xbmcgui.Dialog().ok(_addon_name, __language__(30007))
@@ -565,7 +742,7 @@ def getvideo2(videoid, isPay):
             return
         else:
             try:
-                jwt = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'))
+                jsonResult = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'), videoid)
             except urllib.error.HTTPError as e:
                 response = json.loads(e.read())
                 msg = __language__(30005)
@@ -577,12 +754,7 @@ def getvideo2(videoid, isPay):
                 xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
                 return
 
-    jwt = jwt or 'empty'
-    response = urllib.request.urlopen(urllib.request.Request(stream_url, json.dumps({'videoId': videoid}).encode(),
-                                                             {'xauthorization': jwt,
-                                                              'Content-Type': 'application/json'})).read()
-    jsonResult = json.loads(response)
-
+    print(str(jsonResult))
     streamAuswahlListe = []
     streamURLListe = []
     hlsDashListe = []
@@ -677,6 +849,13 @@ if api_version == 0:
     #if match:
     #
     #else:
+
+if login_method == '':
+    if _addon.getSetting('login_method') == 'iOS':
+        login_method = 'iOS'
+    elif _addon.getSetting('login_method') == 'Web':
+        login_method = 'Web'
+    xbmc.log('Login-Methode: '+login_method)
 
 # get arguments
 args = dict(urlparse.parse_qsl(sys.argv[2][1:]))

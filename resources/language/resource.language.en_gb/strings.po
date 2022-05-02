@@ -60,3 +60,7 @@ msgstr "Api-version"
 msgctxt "#30030"
 msgid "Canceled"
 msgstr "Canceled"
+
+msgctxt "#30040"
+msgid "Login-Method"
+msgstr "Login-Method"
