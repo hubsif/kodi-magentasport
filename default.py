@@ -61,6 +61,7 @@ oauth_url = "https://www.magentasport.de/service/auth/web/login?headto=https://w
 oauth_factorx_url='https://accounts.login.idm.telekom.com/factorx'
 jwt_url = "https://www.magentasport.de/service/auth/app/login/jwt"
 stream_url = "https://www.magentasport.de/service/player/v2/streamAccess"
+stream_config_url = "https://www.magentasport.de/service/player/v2/videoConfig"
 main_page = "/navigation"
 schedule_url = "/components/programm/18"
 #schedule_url = "/epg/28" # alt
@@ -750,7 +751,10 @@ def getvideo():
 
 def getvideo2(videoid, isPay):
     jsonResult = None
-    if not _addon.getSetting('username') or isPay != 'True':
+    licenseAcquisitionUrl = ''
+    imageURL = ''
+    jsonResultConfig = None
+    if not _addon.getSetting('username') and isPay != 'True':
         xbmcgui.Dialog().ok(_addon_name, __language__(30007))
         _addon.openSettings()
         return
@@ -764,6 +768,7 @@ def getvideo2(videoid, isPay):
                 jsonResult = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'), videoid, False)
         except urllib.error.HTTPError as e:
             response = json.loads(e.read())
+            xbmc.log('ErrorMessage'+str(response))
             msg = __language__(30005)
             if 'error_description' in response:
                 msg += '\n\n'
@@ -772,8 +777,19 @@ def getvideo2(videoid, isPay):
             xbmcgui.Dialog().ok(_addon_name, msg)
             xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
             return
-
     print(str(jsonResult))
+
+    try:
+        response = urllib.request.urlopen(stream_config_url +'?videoid='+ str(videoid)).read()
+        jsonResultConfig = json.loads(response)
+
+        licenseAcquisitionUrl = jsonResultConfig['drmData']['licenseType']['widevine']['licenseAcquisitionUrl']
+        imageURL = jsonResultConfig['image']
+        xbmc.log('licenseAcquisitionUrl: ' + licenseAcquisitionUrl)
+        xbmc.log('Config: ' + str(jsonResultConfig))
+    except:
+        xbmc.log("no licenceacquisitionUrl")
+
     streamAuswahlListe = []
     streamURLListe = []
     hlsDashListe = []
@@ -837,19 +853,22 @@ def getvideo2(videoid, isPay):
         if hlsDashListe[auswahl] != 'leer':
             xbmc.log("Stream Nr " + str(auswahl) + " selected: "+streamAuswahlListe[auswahl])
             xbmc.log("Stream-URL: "+streamURLListe[auswahl])
-            #xbmc.log("DRM-Token: "+drmToken)
-            #xbmc.log("DRM-Pixel: "+drmPixel)
+            xbmc.log("DRM-Token: "+drmToken)
+            xbmc.log("DRM-Pixel: "+drmPixel)
             listitem = xbmcgui.ListItem(path=streamURLListe[auswahl])
-            if streamAuswahlListe[auswahl] != textXMLStream:
+            if (streamAuswahlListe[auswahl] != textXMLStream and drmToken != '' and licenseAcquisitionUrl != ''):
+                xbmc.log("DRM-Stream")
                 listitem.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
-                #listitem.setProperty('inputstream.adaptive.license_key', drmToken)
-                listitem.setProperty('inputstream.adaptive.license_key', drmPixel)
-            #listitem.setProperty('inputstream.adaptive.stream_headers', 'User-Agent=the_user_agent&Cookie=the_cookies')
-            # +"|Content-Type=&User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0
+                listitem.setProperty('inputstream.adaptive.license_key', licenseAcquisitionUrl + drmToken + '||R{SSM}|')
+                listitem.setProperty('inputstream.adaptive.stream_headers','User-Agent='+useragent)
             listitem.setProperty('inputstream', 'inputstream.adaptive')
             if hlsDashListe[auswahl] == 'hls':
+                xbmc.log('hls-Stream')
+                #listitem.setMimeType('application/dash+xml')
                 listitem.setProperty('inputstream.adaptive.manifest_type', 'hls')
             else:
+                xbmc.log('dash-Stream')
+                #listitem.setMimeType('application/vnd.apple.mpegurl')
                 listitem.setProperty('inputstream.adaptive.manifest_type', 'mpd')
             xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
 

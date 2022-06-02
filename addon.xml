@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.telekomsport" name="Magenta Sport" version="2.2.2+matrix.1" provider-name="hubsif">
+<addon id="plugin.video.telekomsport" name="Magenta Sport" version="2.2.2+matrix.4" provider-name="hubsif">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
     </requires>
@@ -18,6 +18,11 @@
             <fanart>resources/fanart.jpg</fanart>
         </assets>
         <news>
+			v2.2.2+matrix.3/4 (2022-06-02)
+			- fixed drm-not-sky-hls-streams
+			v2.2.2+matrix.2 (2022-06-02)
+			- fixed drm-not-sky-streams
+			v2.2.2+matrix.0 (2022-05-02)
 			v2.2.2+matrix.1 (2022-05-28)
 			- fixed free stream + drm-not-sky-streams
 			v2.2.2+matrix.0 (2022-05-02)
