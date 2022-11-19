@@ -259,7 +259,7 @@ def get_jwt(username, password, videoID, payFree):
 
             response = urllib.request.urlopen(req)
             jsonresult = json.loads(response.read())
-            xbmc.log('agegdeigjiöl'+str(jsonresult))
+            xbmc.log('Access_token:'+str(jsonresult))
             data = {'refresh_token': jsonresult['refresh_token'], 'client_id': '10LIVESAM30000004901MAGENTASPORTIOS00000',
                     'grant_type': 'refresh_token', 'redirect_uri': 'sso.magentasport://web_login_callback', 'scope': 'tsm'}
             post = urlparse.urlencode(data).encode('utf-8')
@@ -291,6 +291,26 @@ def get_jwt(username, password, videoID, payFree):
                                        {'label': '2780_hls'})).read()
         jsonResult = json.loads(response)
 
+        if False:
+            i = 354000
+            while i < 360000:
+                try:
+                    response = urllib.request.urlopen(
+                        urllib.request.Request(stream_url, json.dumps({'videoId': str(i)}).encode(),
+                                               {'xauthorization': jsonresult['data']['token'],
+                                                'Content-Type': 'application/json'},
+                                               {'label': '2780_hls'})).read()
+                    jsonResult = json.loads(response)
+                    if (jsonResult['data']['stream']['dash'][:45] == 'https://svc43.main.sl.t-online.de/dlt3/out/u/'):
+                        if 'fcbayern' not in jsonResult['data']['stream']['dash']:
+                            xbmc.log(str(i)+": "+ str(jsonResult))
+                    i += 1
+                except:
+                    i += 1
+                if i == 359999:
+                    xbmc.log("Fertig 12345")
+
+
     xbmc.log('jsonResult'+str(jsonResult))
     return jsonResult
 
@@ -312,7 +332,7 @@ def urlopen(urlEnd, *args):
                                                                                                                  1)).total_seconds())
         accesstoken = generate_hash256('{0}{1}{2}'.format(api_salt, utc, base_api + urlEnd))
         xbmc.log('Token erzeugt für '+str(base_api + urlEnd))
-        #xbmc.log('hier000 ' + str(base_url + base_api + urlEnd + '?' + eventTreeIDUebergabe + 'token=' + accesstoken))
+        xbmc.log('URL mit Token: ' + str(base_url + base_api + urlEnd + '?' + eventTreeIDUebergabe + 'token=' + accesstoken))
         response = urllib.request.urlopen(base_url + base_api + urlEnd + '?' + eventTreeIDUebergabe + 'token=' + accesstoken).read()
     else:
         response = urllib.request.urlopen(base_url + base_api + urlEnd).read()
@@ -354,8 +374,7 @@ def doppelterBodenLiveEvent():
         li = xbmcgui.ListItem(ueberschrift)
         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
-def doppelterBodenFCBayernTVlive\
-                (jsonResult):
+def doppelterBodenFCBayernTVlive(jsonResult):
     #xbmc.log('Ich gehe hier durch: doppelterBodenFCBayernTVlive')
     erstesEvent = False
     for content in jsonResult['data']['league_filter']:
@@ -365,25 +384,30 @@ def doppelterBodenFCBayernTVlive\
                 if header['title'].lower() == 'programm':
                     url = build_url({'mode': header['target_type'], 'eventLane': header['target'], 'event_tree_id': str(content['event_tree_id']), 'title': content['title']})
                     jsonFCBayern = json.loads(urlopen(header['target'], 'eventTreeId='+str(content['event_tree_id'])))
-                    for slots in jsonFCBayern['data']['content'][0]['group_elements'][0]['data'][0]['slots']:
-                        if slots['is_live']:
-                            if erstesEvent == False:
-                                scheduled_end = datetime.utcfromtimestamp(
-                                    int(slots['events'][0]['metadata']['scheduled_end']['utc_timestamp']))
-                                ausgabe = slots['events'][0]['metadata']['title']
-                                li = xbmcgui.ListItem('[B]FC Bayern.tv live:[/B] ' + ausgabe + ' (bis ' + str(
-                                    prettytime(scheduled_end)) + ' Uhr) [B](24/7-Programm)[/B]')
-                                li.setArt({'icon': base_image_url + slots['events'][0]['metadata']['images']['editorial']})
-                                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
-                                                            isFolder=True)
-                                erstesEvent = True
-                                break
-
+                    try:
+                        for slots in jsonFCBayern['data']['content'][0]['group_elements'][0]['data'][0]['slots']:
+                            if slots['is_live']:
+                                if erstesEvent == False:
+                                    scheduled_end = datetime.utcfromtimestamp(
+                                        int(slots['events'][0]['metadata']['scheduled_end']['utc_timestamp']))
+                                    ausgabe = slots['events'][0]['metadata']['title']
+                                    li = xbmcgui.ListItem('[B]FC Bayern.tv live:[/B] ' + ausgabe + ' (bis ' + str(
+                                        prettytime(scheduled_end)) + ' Uhr) [B](24/7-Programm)[/B]')
+                                    li.setArt({'icon': base_image_url + slots['events'][0]['metadata']['images']['editorial']})
+                                    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
+                                                                isFolder=True)
+                                    erstesEvent = True
+                                    break
+                    except:
+                        xbmc.log("Bayern TV - kein Programm verfuegbar")
                     #kein Event gefunden
                     if erstesEvent == False:
                         ausgabe = ''
                         li = xbmcgui.ListItem('[B]FC Bayern.tv live:[/B] keine Programminfo verfügbar - starte Livestream hier [B](24/7-Programm)[/B]')
-                        li.setArt({'icon': base_image_url + slots['events'][0]['metadata']['images']['editorial']})
+                        try:
+                            li.setArt({'icon': base_image_url + slots['events'][0]['metadata']['images']['editorial']})
+                        except:
+                            xbmc.log("Bayern TV - kein Bild")
                         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li,
                                                     isFolder=True)
 # plugin call modes
@@ -393,8 +417,11 @@ def getMain():
     jsonLive = json.loads(urlopen(jsonResult['data']['main']['target']))
     if api_version == 3:
         #hier noch live richtig einfügen
-        doppelterBodenLiveEvent()
+        #try:
+            #doppelterBodenLiveEvent()
         doppelterBodenFCBayernTVlive(jsonResult)
+        #except:
+        #    xbmc.log("Fehler Bayern TV")
     else:
         # get currently running games
         counterLive = 0
@@ -759,24 +786,25 @@ def getvideo2(videoid, isPay):
         _addon.openSettings()
         return
     else:
-        try:
-            if isPay == 'True':
-                xbmc.log("pay stream: " + str(videoid))
-                jsonResult = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'), videoid, True)
-            else:
-                xbmc.log("no pay stream: " + str(videoid))
-                jsonResult = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'), videoid, False)
-        except urllib.error.HTTPError as e:
-            response = json.loads(e.read())
-            xbmc.log('ErrorMessage'+str(response))
-            msg = __language__(30005)
-            if 'error_description' in response:
-                msg += '\n\n'
-                msg += __language__(30011)
-                msg += '\n"' + response['error_description'] + '"'
-            xbmcgui.Dialog().ok(_addon_name, msg)
-            xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
-            return
+        #try:
+        #videoid = '307391'
+        if isPay == 'True':
+            xbmc.log("pay stream: " + str(videoid))
+            jsonResult = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'), videoid, True)
+        else:
+            xbmc.log("no pay stream: " + str(videoid))
+            jsonResult = get_jwt(_addon.getSetting('username'), _addon.getSetting('password'), videoid, False)
+        #except urllib.error.HTTPError as e:
+        #    response = json.loads(e.read())
+        #    xbmc.log('ErrorMessage'+str(response))
+        #    msg = __language__(30005)
+        #    if 'error_description' in response:
+        #        msg += '\n\n'
+        #        msg += __language__(30011)
+        #        msg += '\n"' + response['error_description'] + '"'
+        #    xbmcgui.Dialog().ok(_addon_name, msg)
+        #    xbmcplugin.setResolvedUrl(_addon_handler, False, xbmcgui.ListItem())
+        #    return
     print(str(jsonResult))
 
     try:
