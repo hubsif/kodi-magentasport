@@ -35,6 +35,7 @@ from re import search
 import importlib
 import hashlib
 import base64
+import xbmcvfs
 
 
 importlib.reload(sys)
@@ -45,7 +46,7 @@ _addon         = xbmcaddon.Addon(id=_addon_id)
 _addon_name    = _addon.getAddonInfo('name')
 _addon_handler = int(sys.argv[1])
 _addon_url     = sys.argv[0]
-_addon_path    = xbmc.translatePath(_addon.getAddonInfo("path") )
+_addon_path    = xbmcvfs.translatePath(_addon.getAddonInfo("path") )
 __language__   = _addon.getLocalizedString
 #_icons_path    = _addon_path + "/resources/icons/"
 #_fanart_path   = _addon_path + "/resources/fanart/"
