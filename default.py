@@ -569,12 +569,12 @@ def getschedule():
         eventTreeID_Uebergabe = ''
     else:
         eventTreeID_Uebergabe = 'eventTreeId=' + args['event_tree_id']
-    program = json.loads(urlopen(args['eventLane'], eventTreeID_Uebergabe))
+    program = json.loads(urlopen(schedule_url, eventTreeID_Uebergabe))
     bereitsangelegtnurLive = False
     bereitsangelegtnurLiveInfo = False
     #xbmc.log('adgadsg' + str(args['eventLane']))
-
-    for datas in program['data']['epg']['elements']:
+    xbmc.log(str(program))
+    for datas in program['data']['data']:
         createEPG(datas, '0', bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, False)
         bereitsangelegtnurLive = True
         bereitsangelegtnurLiveInfo = True
