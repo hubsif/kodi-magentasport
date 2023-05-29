@@ -1,3 +1,6 @@
+# UPDATE: Unmaintained! Please use [this fork](https://github.com/MRLB/kodi-magentasport) instead!
+
+
 Kodi Magenta Sport Addon (ehem. Telekom Sport)
 ==============================================
 
