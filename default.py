@@ -355,6 +355,7 @@ def doppelterBodenLiveEvent():
         li = xbmcgui.ListItem(ueberschrift)
         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
+#FC Bayern TV Live seit Juli 2023 eingestellt
 def doppelterBodenFCBayernTVlive(jsonResult):
     #xbmc.log('Ich gehe hier durch: doppelterBodenFCBayernTVlive')
     erstesEvent = False
@@ -399,7 +400,8 @@ def getMain():
     if api_version == 3:
         #hier noch live richtig einfügen
         doppelterBodenLiveEvent()
-        doppelterBodenFCBayernTVlive(jsonResult)
+        #FC Byern TV live seit Juli 2023 eingestellt
+        #doppelterBodenFCBayernTVlive(jsonResult)
     else:
         # get currently running games
         counterLive = 0
@@ -451,9 +453,21 @@ def getMain():
                                 erstesEvent = True
                                 break
 
-        if erstesEvent == False:
+        #FC Bayern TV Live seit Juli 2023 eingestellt
+        #if erstesEvent == False:
             #doppelter Boden: noch anderweitig die Daten herbekommen:
-            doppelterBodenFCBayernTVlive(jsonResult)
+            #doppelterBodenFCBayernTVlive(jsonResult)
+
+    url = build_url({'mode': 'video', 'videoid': '381449', 'isPay': True})
+    li = xbmcgui.ListItem('[B]MagentaSport Live-Kanal[/B] (24/7-Programm)')
+    li.setProperty('IsPlayable', 'true')
+    li.setInfo('video', {})
+    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+
+    title = "--------------------------------------------------------"
+    url = ''
+    li = xbmcgui.ListItem(title)
+    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
     url = build_url({'mode': 'EPG', 'onlyLiveYesNo': '0'})
     li = xbmcgui.ListItem('[B]Programmvorschau[/B] (nächste Liveevents)')
@@ -573,7 +587,7 @@ def getschedule():
     bereitsangelegtnurLive = False
     bereitsangelegtnurLiveInfo = False
     #xbmc.log('adgadsg' + str(args['eventLane']))
-    xbmc.log(str(program))
+    #xbmc.log(str(program))
     for datas in program['data']['data']:
         createEPG(datas, '0', bereitsangelegtnurLive, bereitsangelegtnurLiveInfo, False)
         bereitsangelegtnurLive = True
