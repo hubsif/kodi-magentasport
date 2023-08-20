@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.telekomsport" name="Magenta Sport" version="2.3.1+matrix.0" provider-name="hubsif">
+<addon id="plugin.video.telekomsport" name="Magenta Sport" version="2.3.2+matrix.0" provider-name="hubsif">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
     </requires>
@@ -18,6 +18,8 @@
             <fanart>resources/fanart.jpg</fanart>
         </assets>
         <news>
+			v2.3.2+matrix.0 (2023-08-20)
+			- added sportdigital FUSSBALL
 			v2.3.1+matrix.0 (2023-07-24)
 			- removed FC Bayern TV live, added MagentaSport Live-Kanal
 			v2.3.0+matrix.1 (2023-01-20)

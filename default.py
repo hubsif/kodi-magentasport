@@ -464,6 +464,12 @@ def getMain():
     li.setInfo('video', {})
     xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
 
+    url = build_url({'mode': 'video', 'videoid': '383061', 'isPay': True})
+    li = xbmcgui.ListItem('[B]Sportdigital FUSSBALL[/B] (24/7-Programm)')
+    li.setProperty('IsPlayable', 'true')
+    li.setInfo('video', {})
+    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+
     title = "--------------------------------------------------------"
     url = ''
     li = xbmcgui.ListItem(title)
