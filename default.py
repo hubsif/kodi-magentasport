@@ -36,7 +36,7 @@ import importlib
 import hashlib
 import base64
 import xbmcvfs
-
+import requests
 
 importlib.reload(sys)
 #sys.setdefaultencoding('utf8')
@@ -458,16 +458,18 @@ def getMain():
             #doppelter Boden: noch anderweitig die Daten herbekommen:
             #doppelterBodenFCBayernTVlive(jsonResult)
 
+    autentificationProcessMagentaTVfuerEPG()
     url = build_url({'mode': 'video', 'videoid': '381449', 'isPay': True})
-    li = xbmcgui.ListItem('[B]MagentaSport Live-Kanal[/B] (24/7-Programm)')
+    li = xbmcgui.ListItem('[B]MagentaSport Live-Kanal[/B] (24/7-Programm): ' + EPGinfoMSSportNow)
+    li.setInfo('video', {'plot': EPGinfoMSSport})
     li.setProperty('IsPlayable', 'true')
-    li.setInfo('video', {})
+
     xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
 
     url = build_url({'mode': 'video', 'videoid': '383061', 'isPay': True})
-    li = xbmcgui.ListItem('[B]Sportdigital FUSSBALL[/B] (24/7-Programm)')
+    li = xbmcgui.ListItem('[B]Sportdigital FUSSBALL[/B] (24/7-Programm): ' + EPGinfosportdigitalNow)
     li.setProperty('IsPlayable', 'true')
-    li.setInfo('video', {})
+    li.setInfo('video', {'plot': EPGinfosportdigital})
     xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
 
     title = "--------------------------------------------------------"
@@ -896,6 +898,132 @@ def getvideo2(videoid, isPay):
                 #listitem.setMimeType('application/vnd.apple.mpegurl')
                 listitem.setProperty('inputstream.adaptive.manifest_type', 'mpd')
             xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
+
+
+############################################################################
+# EPG from Magenta TV
+#Autentification:
+user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0'
+urlAutentification = 'https://api.prod.sngtv.magentatv.de/EPG/JSON/Authenticate'
+urlEPG = 'https://api.prod.sngtv.magentatv.de/EPG/JSON/PlayBillList?userContentFilter=-375463788'
+
+headerAutentifcation = {
+    'Host': 'api.prod.sngtv.magentatv.de',
+    'User-Agent': user_agent,
+    'Referer': 'https://web.magentatv.de/',
+}
+
+dataAutentification = {
+    #'areaid': '1',
+    #'cnonce': '728cfafe6f76b75a275d193ce8553d5c',
+    #'mac': 'df8b0d05-937b-4516-9a13-ad24f3103363',
+    #'preSharedKeyID': 'NGTV000001',
+    #'subnetId': '4901',
+    #'templatename': 'NGTV',
+    #'terminalid': 'df8b0d05-937b-4516-9a13-ad24f3103363',
+    'terminaltype': 'WEB-MTV',
+    #'terminalvendor': 'WebTV',
+    'timezone': 'Europe/Berlin',
+    #'usergroup': '-1',
+    'userType': 3,
+    'utcEnable': 1
+}
+
+############################################################################
+
+
+def autentificationProcessMagentaTVfuerEPG():
+    global EPGinfoMSSportNow
+    global EPGinfoMSSport
+    global EPGinfosportdigitalNow
+    global EPGinfosportdigital
+
+    EPGinfoMSSportNow = 'Ohne EPG'
+    EPGinfoMSSport = ''
+    EPGinfosportdigitalNow = 'Ohne EPG'
+    EPGinfosportdigital = ''
+
+    try:
+        meAutentificationProcess = requests.post(url=urlAutentification, headers=headerAutentifcation, data=json.dumps(dataAutentification))
+        meAutentificationProcessHeader = meAutentificationProcess.headers
+        meAutentificationProcess = meAutentificationProcess.json()
+        #SessionID herausfinden
+        global sessionID
+        sessionID = str(meAutentificationProcess['sessionid'])
+
+        #CSESSIONID herausfinden
+        start = int(meAutentificationProcessHeader['Set-Cookie'].index('CSESSIONID=')) +11
+        ende = int(meAutentificationProcessHeader['Set-Cookie'][start:].index(';'))
+        global csessionID
+        csessionID = (meAutentificationProcessHeader['Set-Cookie'][start:start+ende])
+
+        #CSRFsession herausfinden
+        start = int(meAutentificationProcessHeader['Set-Cookie'].index('CSRFSESSION=')) +12
+        ende = int(meAutentificationProcessHeader['Set-Cookie'][start:].index(';'))
+        global CSRFsession
+        CSRFsession = (meAutentificationProcessHeader['Set-Cookie'][start:start+ende])
+
+        #EPG auslesen
+        headerLiveTVListe = {
+            'Host': 'api.prod.sngtv.magentatv.de',
+            'User-Agent': user_agent,
+            'Referer': 'https://web.magentatv.de/',
+            'X_CSRFToken': CSRFsession,
+            'Cookie': 'JSESSIONID=' + sessionID + '; CSESSIONID=' + csessionID,
+        }
+
+        #MS Sport
+        dataEPG = {
+            'count': -1,
+            # 'isFillProgram': 1,
+            'offset': 0,
+            'properties': [{'include': 'endtime,externalContentCode,genres,id,name,starttime', 'name': 'playbill'}],
+            # 'type': 2,
+            # 'begintime': '20210514164801',
+            'channelid': '3757',
+            # 'endtime': '20210515000000'
+        }
+
+        meEPG = requests.post(url=urlEPG, headers=headerLiveTVListe, data=json.dumps(dataEPG))
+        meEPG = meEPG.json()
+
+        j = 0
+        EPGinfoMSSportNow = meEPG['playbilllist'][j]['name'] + ' (' + meEPG['playbilllist'][j]['genres'] + ') (bis ' + meEPG['playbilllist'][j]['endtime'][11:16] + ')'
+        while j < 9:
+            EPGinfoMSSport = EPGinfoMSSport + meEPG['playbilllist'][j]['starttime'][11:16] + '-' + meEPG['playbilllist'][j]['endtime'][11:16] + ': ' + meEPG['playbilllist'][j]['name'] + ' (' + meEPG['playbilllist'][j]['genres'] + ')\n'
+            j = j + 1
+        #xbmc.log("EPG: "+EPGinfoMSSport)
+
+        #sportdigital
+        dataEPG = {
+            'count': -1,
+            # 'isFillProgram': 1,
+            'offset': 0,
+            'properties': [{'include': 'endtime,externalContentCode,genres,id,name,starttime', 'name': 'playbill'}],
+            # 'type': 2,
+            # 'begintime': '20210514164801',
+            'channelid': '194',
+            # 'endtime': '20210515000000'
+        }
+
+        meEPG = requests.post(url=urlEPG, headers=headerLiveTVListe, data=json.dumps(dataEPG))
+        meEPG = meEPG.json()
+
+        j = 0
+        EPGinfosportdigitalNow = meEPG['playbilllist'][j]['name'] + ' (' + meEPG['playbilllist'][j]['genres'] + ') (bis ' + \
+                            meEPG['playbilllist'][j]['endtime'][11:16] + ')'
+
+        while j < 9:
+            EPGinfosportdigital = EPGinfosportdigital + meEPG['playbilllist'][j]['starttime'][11:16] + '-' + meEPG['playbilllist'][j][
+                                                                                                       'endtime'][
+                                                                                                   11:16] + ': ' + \
+                             meEPG['playbilllist'][j]['name'] + ' (' + meEPG['playbilllist'][j]['genres'] + ')\n'
+            j = j + 1
+        #xbmc.log("EPG: " + EPGinfosportdigital)
+
+
+    except:
+        xbmc.log("Autentification Process fuer EPG via Magenta TV failed")
 
 
 ##############
