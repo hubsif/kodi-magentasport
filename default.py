@@ -915,12 +915,12 @@ headerAutentifcation = {
 
 dataAutentification = {
     #'areaid': '1',
-    #'cnonce': '728cfafe6f76b75a275d193ce8553d5c',
-    #'mac': 'df8b0d05-937b-4516-9a13-ad24f3103363',
+    #'cnonce': '',
+    #'mac': '',
     #'preSharedKeyID': 'NGTV000001',
     #'subnetId': '4901',
     #'templatename': 'NGTV',
-    #'terminalid': 'df8b0d05-937b-4516-9a13-ad24f3103363',
+    #'terminalid': '',
     'terminaltype': 'WEB-MTV',
     #'terminalvendor': 'WebTV',
     'timezone': 'Europe/Berlin',
